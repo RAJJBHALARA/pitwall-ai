@@ -18,14 +18,14 @@ export function useStaggerChildren(defaultDuration = 0.4, defaultStagger = 0.1) 
   const stagger = shouldReduceMotion ? 0 : isMobile ? Math.min(defaultStagger, 0.3) : defaultStagger;
 
   const containerVariants = {
-    initial: {},
-    animate: { transition: { staggerChildren: stagger } },
+    hidden: {},
+    visible: { transition: { staggerChildren: stagger } },
     exit: { transition: { staggerChildren: stagger, staggerDirection: -1 } }
   };
 
   const itemVariants = {
-    initial: { opacity: 0, y: isMobile ? 10 : 20 },
-    animate: { opacity: 1, y: 0, transition: { duration, ease: "easeOut" } },
+    hidden: { opacity: 0, y: isMobile ? 10 : 20 },
+    visible: { opacity: 1, y: 0, transition: { duration, ease: "easeOut" } },
     exit: { opacity: 0, y: isMobile ? -5 : -10, transition: { duration: duration * 0.8 } }
   };
 

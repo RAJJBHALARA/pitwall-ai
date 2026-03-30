@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { ArrowRight, Activity, TrendingUp, Timer } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, Activity, TrendingUp, Timer, AlertCircle } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAnimatedCounter } from '../utils/useAnimatedCounter';
 import CustomDropdown from '../components/CustomDropdown';
 import ScrollProgress from '../components/ScrollProgress';
+import { getLapTimes, getTireStrategy } from '../services/api';
 import PageTransition from '../components/PageTransition';
 
 export default function RaceAnalysis() {
@@ -19,15 +20,59 @@ export default function RaceAnalysis() {
   const pitStop = useAnimatedCounter(2.34, 1.5, 0.5, true);
   const winProb = useAnimatedCounter(87.4, 1.5, 0.7, true);
 
-  // SVG path lengths for draw animation
-  const pathLength1 = 'M0,150 L40,145 L80,152 L120,138 L160,142 L200,120 L240,115 L280,122 L320,110 L360,112 L400,105';
-  const pathLength2 = 'M0,155 L40,148 L80,155 L120,142 L160,140 L200,135 L240,128 L280,130 L320,125 L360,118 L400,115';
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const [lapData, setLapData] = useState({ drivers: [], laps: {} });
+  const [tireStrategy, setTireStrategy] = useState([]);
 
-  const tireDrivers = [
-    { name: 'M. VERSTAPPEN', detail: '1 STOP (LAP 32)', segments: [{ compound: 'M', width: '41%', bg: 'bg-yellow-400', text: 'text-black' }, { compound: 'H', width: '59%', bg: 'bg-white', text: 'text-black' }] },
-    { name: 'C. LECLERC', detail: '1 STOP (LAP 30)', segments: [{ compound: 'S', width: '38%', bg: 'bg-red-600', text: 'text-white' }, { compound: 'H', width: '62%', bg: 'bg-white', text: 'text-black' }] },
-    { name: 'L. HAMILTON', detail: '2 STOPS (LAP 24, 52)', segments: [{ compound: 'M', width: '30%', bg: 'bg-yellow-400', text: 'text-black' }, { compound: 'S', width: '35%', bg: 'bg-red-600', text: 'text-white' }, { compound: 'S', width: '35%', bg: 'bg-red-600', text: 'text-white' }] },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Format names matching backend requirements
+        const shortGp = gp.replace(' GP', '').replace(' CIRCUIT', '').trim();
+        const shortSession = session === 'RACE' ? 'R' : session === 'QUALIFYING' ? 'Q' : session === 'SPRINT' ? 'S' : session;
+        
+        const [lapsRes, tireRes] = await Promise.all([
+          getLapTimes(parseInt(season), shortGp, shortSession),
+          getTireStrategy(parseInt(season), shortGp)
+        ]);
+        
+        setLapData(lapsRes.data || { drivers: [], laps: {} });
+        setTireStrategy(tireRes.data?.data || []);
+      } catch (err) {
+        setError(err.message === 'RATE_LIMIT' ? 'Too many requests. Wait 1 minute.' : 
+                  err.message === 'AUTH_ERROR' ? 'Authentication failed.' : 
+                  err.message === 'NO_DATA' ? 'Data not available for this selection.' : 
+                  'Something went wrong. Try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [season, gp, session]);
+
+  // Generate SVG path string from array of lap times
+  const generatePath = (laps) => {
+    if (!laps || laps.length === 0) return '';
+    const min = Math.min(...laps);
+    const max = Math.max(...laps) || min + 1;
+    const range = max - min || 1;
+    const stepX = 400 / Math.max(laps.length - 1, 1);
+    
+    return laps.map((lap, i) => {
+       const x = i * stepX;
+       const y = 200 - ((lap - min) / range) * 160 - 20; // lower time = lower y visually (higher on graph)
+       return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+  };
+
+  const d1 = lapData.drivers[0] || 'VER';
+  const d2 = lapData.drivers[1] || 'LEC';
+  const pathLength1 = generatePath(lapData.laps[d1] || []);
+  const pathLength2 = generatePath(lapData.laps[d2] || []);
 
   return (
     <PageTransition>
@@ -57,10 +102,17 @@ export default function RaceAnalysis() {
           transition={{ delay: 0.1, duration: dur(0.4) }}
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
-          <CustomDropdown label="Season" value={season} options={['2024', '2023', '2022', '2021']} onChange={setSeason} />
-          <CustomDropdown label="Grand Prix" value={gp} options={['MONACO GP', 'SILVERSTONE GP', 'SPA-FRANCORCHAMPS', 'SUZUKA CIRCUIT', 'MONZA']} onChange={setGp} />
-          <CustomDropdown label="Session" value={session} options={['RACE', 'QUALIFYING', 'SPRINT', 'FP1', 'FP2', 'FP3']} onChange={setSession} />
+          <CustomDropdown label="Season" value={season} options={['2024', '2023']} onChange={setSeason} />
+          <CustomDropdown label="Grand Prix" value={gp} options={['Monaco', 'Silverstone', 'Spa', 'Suzuka', 'Monza']} onChange={setGp} />
+          <CustomDropdown label="Session" value={session} options={['RACE', 'QUALIFYING', 'SPRINT']} onChange={setSession} />
         </motion.section>
+
+        {error && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-red-900/20 border border-red-500/50 rounded flex items-center gap-3 text-red-500">
+            <AlertCircle size={20} />
+            <span className="font-['Space_Grotesk'] font-bold uppercase tracking-widest text-sm">{error}</span>
+          </motion.div>
+        )}
 
         {/* Lap Time Evolution */}
         <motion.section
@@ -78,56 +130,50 @@ export default function RaceAnalysis() {
             <div className="flex gap-6">
               <div className="flex items-center gap-2">
                 <span className="w-4 h-1 bg-[#e10600]"></span>
-                <span className="text-xs font-['Space_Grotesk'] font-bold uppercase text-white">VER</span>
+                <span className="text-xs font-['Space_Grotesk'] font-bold uppercase text-white">{d1}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-4 h-1 bg-white"></span>
-                <span className="text-xs font-['Space_Grotesk'] font-bold uppercase text-white">LEC</span>
+                <span className="text-xs font-['Space_Grotesk'] font-bold uppercase text-white">{d2}</span>
               </div>
             </div>
           </div>
           <div className="h-80 relative p-4 overflow-hidden bg-[radial-gradient(circle,#ffffff05_1px,transparent_1px)]" style={{ backgroundSize: '24px 24px' }}>
-            <svg className="w-full h-full" viewBox="0 0 400 200" preserveAspectRatio="none">
-              <motion.path
-                d={pathLength1}
-                fill="none"
-                stroke="#e10600"
-                strokeWidth="2.5"
-                className="drop-shadow-[0_0_8px_rgba(225,6,0,0.4)]"
-                initial={{ pathLength: 0 }}
-                whileInView={{ pathLength: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: dur(1.5), ease: 'easeInOut' }}
-              />
-              <motion.path
-                d={pathLength2}
-                fill="none"
-                stroke="#e5e2e1"
-                strokeWidth="2.5"
-                initial={{ pathLength: 0 }}
-                whileInView={{ pathLength: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: dur(1.5), ease: 'easeInOut', delay: 0.2 }}
-              />
-            </svg>
+            {loading ? (
+              <div className="w-full h-full flex items-center justify-center">
+                 <div className="w-8 h-8 rounded-full border-2 border-[#e10600]/20 border-t-[#e10600] animate-spin"></div>
+              </div>
+            ) : (
+              <svg className="w-full h-full" viewBox="0 0 400 200" preserveAspectRatio="none">
+                <motion.path
+                  d={pathLength1}
+                  fill="none"
+                  stroke="#e10600"
+                  strokeWidth="2.5"
+                  className="drop-shadow-[0_0_8px_rgba(225,6,0,0.4)]"
+                  initial={{ pathLength: 0 }}
+                  whileInView={{ pathLength: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: dur(1.5), ease: 'easeInOut' }}
+                />
+                <motion.path
+                  d={pathLength2}
+                  fill="none"
+                  stroke="#e5e2e1"
+                  strokeWidth="2.5"
+                  initial={{ pathLength: 0 }}
+                  whileInView={{ pathLength: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: dur(1.5), ease: 'easeInOut', delay: 0.2 }}
+                />
+              </svg>
+            )}
             <div className="absolute inset-0 flex pointer-events-none">
               <div className="flex-1 border-r border-[#ffffff05]"></div>
               <div className="flex-1 border-r border-[#ffffff05]"></div>
               <div className="flex-1 border-r border-[#ffffff05]"></div>
               <div className="flex-1 border-r border-[#ffffff05]"></div>
             </div>
-            {/* Highlight Indicator */}
-            <div className="absolute top-0 bottom-0 left-[60%] w-[1px] bg-[#47efda] opacity-30"></div>
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 1, duration: dur(0.3) }}
-              className="absolute top-[48%] left-[58.5%] bg-[#353534]/90 border border-[#47efda]/30 rounded p-3 text-[10px] font-['Space_Grotesk'] backdrop-blur-md shadow-xl"
-            >
-              <div className="text-[#47efda] font-bold mb-1 text-xs">LAP 47</div>
-              <div className="text-white">VER: 1:14.281</div>
-              <div className="text-[#e9bcb5]">LEC: 1:14.902</div>
-            </motion.div>
           </div>
         </motion.section>
 
@@ -142,32 +188,52 @@ export default function RaceAnalysis() {
           <div className="p-6">
             <h2 className="font-['Space_Grotesk'] font-bold text-xl tracking-[-0.02em] uppercase text-white">TIRE STRATEGY</h2>
             <div className="mt-8 space-y-8">
-              {tireDrivers.map((driver, di) => (
-                <div key={driver.name} className="space-y-3">
-                  <div className="flex justify-between items-center text-xs font-['Space_Grotesk'] font-bold uppercase tracking-widest text-white">
-                    <span>{driver.name}</span>
-                    <span className="text-[#e9bcb5]">{driver.detail}</span>
-                  </div>
-                  <motion.div
-                    initial={{ scaleX: 0 }}
-                    whileInView={{ scaleX: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: dur(0.8), delay: di * 0.2 }}
-                    style={{ transformOrigin: 'left' }}
-                    className="h-10 w-full flex rounded-full overflow-hidden bg-[#353534] shadow-inner"
-                  >
-                    {driver.segments.map((seg, si) => (
-                      <div
-                        key={si}
-                        className={`h-full ${seg.bg} flex items-center justify-center ${si > 0 ? 'border-l-4 border-black/20' : ''}`}
-                        style={{ width: seg.width }}
-                      >
-                        <span className={`text-xs font-black ${seg.text}`}>{seg.compound}</span>
-                      </div>
-                    ))}
-                  </motion.div>
+              {loading ? (
+                <div className="space-y-4 animate-pulse">
+                   {[1,2,3].map(i => (
+                     <div key={i} className="flex flex-col gap-2">
+                       <div className="h-4 w-32 bg-white/5 rounded"></div>
+                       <div className="h-10 w-full bg-white/5 rounded-full"></div>
+                     </div>
+                   ))}
                 </div>
-              ))}
+              ) : tireStrategy.slice(0, 5).map((driver, di) => {
+                const totalLaps = driver.stints.reduce((sum, s) => sum + s.laps, 0) || 1;
+                const stops = driver.pit_laps?.length || 0;
+                const detail = `${stops} STOP${stops !== 1 ? 'S' : ''} ${stops > 0 ? `(LAP ${driver.pit_laps.join(', ')})` : ''}`;
+
+                return (
+                  <div key={driver.driver} className="space-y-3">
+                    <div className="flex justify-between items-center text-xs font-['Space_Grotesk'] font-bold uppercase tracking-widest text-white">
+                      <span>{driver.driver}</span>
+                      <span className="text-[#e9bcb5]">{detail}</span>
+                    </div>
+                    <motion.div
+                      initial={{ scaleX: 0 }}
+                      whileInView={{ scaleX: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: dur(0.8), delay: di * 0.1 }}
+                      style={{ transformOrigin: 'left' }}
+                      className="h-10 w-full flex rounded-full overflow-hidden bg-[#353534] shadow-inner"
+                    >
+                      {driver.stints.map((seg, si) => {
+                        const compoundChar = String(seg.compound)[0]?.toUpperCase() || 'U';
+                        const bg = compoundChar === 'S' ? 'bg-red-600' : compoundChar === 'M' ? 'bg-yellow-400' : 'bg-white';
+                        const text = compoundChar === 'S' ? 'text-white' : 'text-black';
+                        return (
+                          <div
+                            key={si}
+                            className={`h-full ${bg} flex items-center justify-center ${si > 0 ? 'border-l-4 border-black/20' : ''}`}
+                            style={{ width: `${(seg.laps / totalLaps) * 100}%` }}
+                          >
+                            <span className={`text-xs font-black ${text}`}>{compoundChar}</span>
+                          </div>
+                        );
+                      })}
+                    </motion.div>
+                  </div>
+                )
+              })}
             </div>
             
             <div className="mt-10 pt-6 border-t border-white/5 flex justify-center gap-8">

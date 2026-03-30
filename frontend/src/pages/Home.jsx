@@ -2,16 +2,37 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Cloud, Timer } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAnimatedCounter } from '../utils/useAnimatedCounter';
+import { useState, useEffect } from 'react';
 import PageTransition from '../components/PageTransition';
-
+import { getDrivers } from '../services/api';
 export default function Home() {
   const shouldReduceMotion = useReducedMotion();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d;
 
   const trackTemp = useAnimatedCounter(42.8, 1.5, 0.6, true);
-
   const heroWords = ['THE', 'KINETIC'];
+
+  const [leader, setLeader] = useState({ name: 'Max Verstappen', code: 'VER', team: 'Red Bull Racing' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchLeader = async () => {
+      try {
+        setLoading(true);
+        const res = await getDrivers(2024);
+        if (res.data.drivers && res.data.drivers.length > 0) {
+          setLeader(res.data.drivers[0]);
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLeader();
+  }, []);
 
   return (
     <PageTransition>
@@ -104,7 +125,10 @@ export default function Home() {
               <div className="flex justify-between items-start">
                 <div>
                   <span className="font-['Space_Grotesk'] text-xs font-bold text-[#e10600] tracking-widest uppercase mb-2 block">Current Leader</span>
-                  <h2 className="text-4xl font-['Space_Grotesk'] font-bold text-white uppercase tracking-tight">M. Verstappen</h2>
+                  <h2 className="text-4xl font-['Space_Grotesk'] font-bold text-white uppercase tracking-tight">
+                    {loading ? 'LOADING...' : leader.name}
+                  </h2>
+                  {!loading && error && <span className="text-xs text-[#e10600] mt-1 block">{error}</span>}
                 </div>
                 <div className="text-5xl font-['Space_Grotesk'] font-extrabold text-[#ffffff10] italic">01</div>
               </div>

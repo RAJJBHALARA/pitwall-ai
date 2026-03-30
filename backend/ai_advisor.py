@@ -1,64 +1,118 @@
+import google.generativeai as genai
 import os
 import json
-import google.generativeai as genai
+import re
 from dotenv import load_dotenv
-from typing import Dict, Any, List
 
 load_dotenv()
 
-# Configure Gemini
-api_key = os.environ.get("GOOGLE_API_KEY", "")
-genai.configure(api_key=api_key)
+# We check it at startup in main.py, but for local tests it's useful to verify here
+api_key = os.getenv("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
+model = genai.GenerativeModel("gemini-2.5-flash")
 
-# We use Gemini 1.5 Pro for its deep reasoning
-MODEL_NAME = "gemini-1.5-pro"
-model = genai.GenerativeModel(MODEL_NAME)
+def parse_json_response(text: str) -> dict:
+    try:
+        clean = re.sub(r'```json|```', '', text).strip()
+        parsed = json.loads(clean)
+        # If parsing succeeded but the result is empty or lacks key fields, treat as failure
+        if not parsed or (isinstance(parsed, dict) and not parsed.get("drivers")):
+            return _safe_fallback(text)
+        return parsed
+    except Exception as e:
+        print(f"[JSON Parse Error] {e}")
+        return _safe_fallback(text)
 
-def get_fantasy_picks(race_name: str, recent_form_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Generate fantasy picks using Gemini based on recent driver form."""
-    prompt = (
-        "You are an expert F1 Fantasy analyst. "
-        "Given recent driver performance data, recommend the best "
-        "5 drivers and 1 constructor to pick for the upcoming race. "
-        "Give clear reasoning for each pick. Be specific about stats. "
-        "IMPORTANT: You MUST return the response ONLY as a raw JSON object. Do not include any text before or after the JSON. "
-        "Format response as JSON with keys: "
-        "drivers (list of {name, code, reasoning}), "
-        "constructor (name, reasoning). "
-        f"\n\nUpcoming race: {race_name}\n\nRecent driver performance data:\n{json.dumps(recent_form_data, indent=2)}"
-    )
 
+def _safe_fallback(raw_text: str = "") -> dict:
+    """Return a safe fallback structure when AI fails."""
+    return {
+        "error": True, 
+        "message": "AI failed to generate a valid data structure.",
+        "drivers": [],
+        "constructor": {"name": "Unknown", "reasoning": ""},
+        "key_insight": "Analysis temporarily unavailable due to formatting error.",
+        "drivers_to_avoid": [],
+        "raw": raw_text
+    }
+
+def get_fantasy_picks(race: str, form_data: dict) -> dict:
+    prompt = f"""
+    You are an expert F1 Fantasy analyst.
+    Upcoming race: {race}
+    Recent driver performance data (last 3 races):
+    {json.dumps(form_data, indent=2)}
+    
+    Recommend the best 5 drivers and 1 constructor.
+    Consider: recent form, circuit history, price value.
+    
+    Respond ONLY in valid JSON, no markdown, no extra text:
+    {{
+      "drivers": [
+        {{
+          "code": "VER",
+          "name": "Max Verstappen",
+          "team": "Red Bull Racing",
+          "reasoning": "specific reason based on data",
+          "price_range": "$28-30M"
+        }}
+      ],
+      "constructor": {{
+        "name": "McLaren",
+        "reasoning": "specific reason"
+      }},
+      "key_insight": "one sentence summary",
+      "drivers_to_avoid": ["code1", "code2"]
+    }}
+    """
     try:
         response = model.generate_content(prompt)
-        text = response.text.strip()
-        
-        # Clean potential markdown backticks
-        if "```json" in text:
-            text = text.split("```json")[1].split("```")[0].strip()
-        elif "```" in text:
-            text = text.split("```")[1].split("```")[0].strip()
-            
-        return json.loads(text)
+        return parse_json_response(response.text)
     except Exception as e:
-        print(f"Error calling Gemini for fantasy picks: {e}")
-        return {
-            "drivers": [],
-            "constructor": {"name": "", "reasoning": "Could not fetch AI analysis"}
-        }
+        print(f"[Gemini Fantasy Error] {e}")
+        return parse_json_response("{}") # Will trigger the safe fallback structure
 
-def explain_lap(telemetry_summary: Dict[str, Any], driver: str, race: str, lap: int) -> str:
-    """Explain a telemetry lap in simple English using Gemini."""
-    prompt = (
-        "You are an F1 telemetry expert who explains data in simple, exciting language for fans. "
-        "Given lap telemetry data, explain what happened in that lap — where time was gained, where it was lost, "
-        "and how it compares to the race average. Keep it under 100 words. Be engaging. "
-        f"\n\nDriver: {driver}\nRace: {race}\nLap Number: {lap}\n\n"
-        f"Telemetry Summary:\n{json.dumps(telemetry_summary, indent=2)}"
-    )
-
+def explain_lap(telemetry: dict, driver: str, race: str, lap: int) -> str:
+    prompt = f"""
+    You are an F1 telemetry expert who explains 
+    data in exciting, fan-friendly language.
+    
+    Driver: {driver}
+    Race: {race}
+    Lap: {lap}
+    Telemetry data:
+    {json.dumps(telemetry, indent=2)}
+    
+    Explain what happened in this lap.
+    Focus on where time was gained or lost.
+    Be specific about sector performance.
+    Maximum 120 words.
+    Be exciting and engaging for F1 fans.
+    Respond as plain text only, no JSON, no markdown.
+    """
     try:
         response = model.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
-        print(f"Error calling Gemini for lap explanation: {e}")
-        return "Could not generate AI explanation. Please check your API key and connection."
+        print(f"[Gemini Lap Error] {e}")
+        return "Lap analysis unavailable. The PitWall AI is currently analyzing data offline."
+
+def get_rivalry_analysis(stats: dict, d1: str, d2: str) -> str:
+    prompt = f"""
+    You are a sharp F1 analyst known for bold opinions.
+    
+    Head-to-head stats between {d1} and {d2}:
+    {json.dumps(stats, indent=2)}
+    
+    Write exactly 2 sentences of expert analysis.
+    Mention specific numbers from the data.
+    Be direct and opinionated — take a side.
+    Respond as plain text only, no JSON, no markdown.
+    """
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"[Gemini Rivalry Error] {e}")
+        return "Analysis unavailable. Rivalry data processing encountered an interruption."

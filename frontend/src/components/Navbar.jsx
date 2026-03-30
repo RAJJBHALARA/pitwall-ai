@@ -36,24 +36,25 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-8 font-['Space_Grotesk'] tracking-[-0.02em] uppercase">
           {links.map((link, i) => {
             const isActive = location.pathname === link.path;
-            // Use Framer Motion for the Link component
-            const MotionLink = motion.create(Link);
             return (
-              <MotionLink
+              <motion.div
                 key={link.path}
-                to={link.path}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1, duration: 0.3 }}
-                whileHover={{ color: "#E10600", y: -2 }}
-                className={`font-medium transition-colors ${
-                  isActive
-                    ? 'text-[#e10600] border-b-2 border-[#e10600] pb-1 cursor-default pointer-events-none'
-                    : 'text-[#999999] hover:text-white'
-                }`}
+                whileHover={{ y: -2 }}
               >
-                {link.name}
-              </MotionLink>
+                <Link
+                  to={link.path}
+                  className={`font-medium transition-colors ${
+                    isActive
+                      ? 'text-[#e10600] border-b-2 border-[#e10600] pb-1 cursor-default pointer-events-none'
+                      : 'text-[#999999] hover:text-white hover:text-[#E10600]'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              </motion.div>
             );
           })}
         </div>

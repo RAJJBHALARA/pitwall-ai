@@ -1,110 +1,181 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+import os
 import fastf1
+from dotenv import load_dotenv
 
 from f1_data import (
+    get_available_races,
+    get_drivers,
     get_lap_times,
     get_tire_strategy,
     get_rivalry_stats,
-    get_recent_driver_form,
+    get_recent_form,
     get_lap_telemetry
 )
-from ai_advisor import get_fantasy_picks, explain_lap
+from ai_advisor import get_fantasy_picks, explain_lap, get_rivalry_analysis
 
+load_dotenv()
+
+# Setup Rate Limiting
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="PitWall AI Backend", version="1.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Setup CORS for the frontend
+# Allowed Origins
+origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
+origins = [origin.strip() for origin in origins_env.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this. We allow all origins for dev.
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# API Key Verification Dependency
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "fallback_dev_key")
+async def verify_api_key(request: Request):
+    """Enforce X-API-Key header on every route strictly as requested."""
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        raise HTTPException(status_code=403, detail="API key is missing")
+    if api_key != API_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+    return api_key
+
+# Event on startup
+@app.on_event("startup")
+async def startup_event():
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        print("[WARNING] GEMINI_API_KEY is not set. AI features will fail!")
+    
+    # Verify Cache structure exists
+    cache_dir = os.path.join(os.path.dirname(__file__), 'cache')
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+        print(f"[INFO] Created FastF1 cache directory at {cache_dir}")
+    else:
+        print(f"[INFO] FastF1 cache directory ready at {cache_dir}")
+
+# Models
 class FantasyPicksReq(BaseModel):
     race: str
     year: int
 
-class LapExplainerReq(BaseModel):
-    year: int
-    race: str
-    driver: str
-    lap: int
+# --- API Endpoints ---
 
-@app.get("/api/seasons")
-async def get_seasons():
-    """Return list of available seasons (2018-2024)."""
-    # FastF1 is most reliable from 2018 up to 2024 currently.
-    return {"seasons": list(range(2018, 2025))}
+@app.get("/api/health")
+@limiter.limit("60/minute")
+async def health_check(request: Request):
+    """Public health endpoint, no API key needed for basic check."""
+    return {"status": "ok", "ai": "gemini-1.5-pro"}
 
-@app.get("/api/races")
-async def get_races(year: int):
-    """Return list of races for that year."""
-    try:
-        events = fastf1.get_event_schedule(year)
-        # Filter testing out
-        races = events[events['EventFormat'] != 'testing']
-        return {"races": races['EventName'].tolist()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/api/races", dependencies=[Depends(verify_api_key)])
+@limiter.limit("20/minute")
+async def fetch_races(request: Request, year: int = 2024):
+    races = get_available_races(year)
+    if not races:
+        raise HTTPException(status_code=404, detail="No races found.")
+    return {"races": races}
 
-@app.get("/api/sessions")
-async def get_sessions(year: int, race: str):
-    """Return available sessions. Using static generic sessions for F1 for simplicity."""
-    return {"sessions": ["FP1", "FP2", "FP3", "Q", "S", "SS", "R"]}
+@app.get("/api/drivers", dependencies=[Depends(verify_api_key)])
+@limiter.limit("20/minute")
+async def fetch_drivers(request: Request, year: int = 2024):
+    drivers = get_drivers(year)
+    if not drivers:
+        raise HTTPException(status_code=404, detail="Drivers not found.")
+    return {"drivers": drivers}
 
-@app.get("/api/lap-times")
-async def fetch_lap_times(year: int, race: str, session: str):
-    """Return lap times for all drivers."""
+@app.get("/api/lap-times", dependencies=[Depends(verify_api_key)])
+@limiter.limit("10/minute")
+async def fetch_lap_times_api(request: Request, year: int, race: str, session: str):
     data = get_lap_times(year, race, session)
-    if not data:
-        raise HTTPException(status_code=404, detail="Lap times not found or could not be processed.")
-    return {"data": data}
-
-@app.get("/api/tire-strategy")
-async def fetch_tire_strategy(year: int, race: str):
-    """Return stint and compound data per driver."""
-    data = get_tire_strategy(year, race)
-    if not data:
-        raise HTTPException(status_code=404, detail="Tire strategy not found.")
-    return {"data": data}
-
-@app.get("/api/rivalry")
-async def fetch_rivalry(year: int, driver1: str, driver2: str):
-    """Return head to head stats."""
-    data = get_rivalry_stats(year, driver1, driver2)
-    if not data:
-        raise HTTPException(status_code=404, detail="Rivalry stats not found.")
+    if not data or not data.get("drivers"):
+        raise HTTPException(status_code=404, detail="No lap times data available.")
     return data
 
-@app.post("/api/fantasy-picks")
-async def fetch_fantasy_picks(req: FantasyPicksReq):
-    """Fetch recent form data, send to Claude, return AI picks + reasoning."""
-    # We will grab form data for top drivers as a sample (or you can specify specific ones).
-    # Since fast get_recent_driver_form is slow sequentially for all, we will fetch for top 5 teams' drivers.
-    top_drivers = ["VER", "PER", "LEC", "SAI", "NOR", "PIA", "HAM", "RUS", "ALO", "STR"]
-    recent_data = []
-    
-    # We use 2024 to fetch form
-    for drv in top_drivers:
-        form = get_recent_driver_form(drv, last_n_races=3)
-        if form:
-            recent_data.append(form)
-            
-    if not recent_data:
-        raise HTTPException(status_code=500, detail="Could not gather recent driver form.")
-        
-    picks = get_fantasy_picks(req.race, recent_data)
-    return picks
+@app.get("/api/tire-strategy", dependencies=[Depends(verify_api_key)])
+@limiter.limit("10/minute")
+async def fetch_tire_strategy_api(request: Request, year: int, race: str):
+    data = get_tire_strategy(year, race)
+    if not data:
+        raise HTTPException(status_code=404, detail="No tire strategy available.")
+    return {"data": data}
 
-@app.post("/api/lap-explainer")
-async def fetch_lap_explainer(req: LapExplainerReq):
-    """Fetch telemetry, send to Claude, return plain English explanation."""
-    telemetry = get_lap_telemetry(req.year, req.race, req.driver, req.lap)
+import asyncio
+
+@app.get("/api/rivalry", dependencies=[Depends(verify_api_key)])
+@limiter.limit("10/minute")
+async def fetch_rivalry_api(request: Request, year: int, driver1: str, driver2: str):
+    try:
+        stats = await asyncio.to_thread(get_rivalry_stats, year, driver1, driver2)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Rivalry computation failed: {str(e)}")
+    
+    if not stats:
+        raise HTTPException(status_code=404, detail="No rivalry data available.")
+    
+    try:
+        ai_analysis = await asyncio.to_thread(get_rivalry_analysis, stats, driver1, driver2)
+    except Exception:
+        ai_analysis = ""
+    
+    return {
+        "stats": stats,
+        "aiAnalysis": ai_analysis
+    }
+
+@app.get("/api/telemetry", dependencies=[Depends(verify_api_key)])
+@limiter.limit("10/minute")
+async def fetch_telemetry_api(request: Request, year: int, race: str, driver: str, lap: int):
+    telemetry = get_lap_telemetry(year, race, driver, lap)
     if not telemetry:
-        raise HTTPException(status_code=404, detail="Lap telemetry not found.")
+        raise HTTPException(status_code=404, detail="No telemetry available for this lap.")
         
-    explanation = explain_lap(telemetry, req.driver, req.race, req.lap)
-    return {"explanation": explanation, "telemetry": telemetry}
+    ai_analysis = explain_lap(telemetry, driver, race, lap)
+    telemetry["aiAnalysis"] = ai_analysis
+    return telemetry
+
+@app.post("/api/fantasy-picks", dependencies=[Depends(verify_api_key)])
+@limiter.limit("5/minute")
+async def fetch_fantasy_picks_api(request: Request, req: FantasyPicksReq):
+    """Fetch AI-powered fantasy picks. Runs heavy computation in background thread."""
+    try:
+        # Run the heavy form data collection in a thread
+        form_data = await asyncio.to_thread(_collect_form_data)
+        # Run AI picks generation in a thread  
+        picks = await asyncio.to_thread(get_fantasy_picks, req.race, form_data)
+        return picks
+    except Exception as e:
+        print(f"[Fantasy Error] {e}")
+        return {
+            "error": True,
+            "message": f"Fantasy picks generation failed: {str(e)}",
+            "drivers": [],
+            "constructor": {"name": "Unknown", "reasoning": ""},
+            "key_insight": "Analysis temporarily unavailable.",
+            "drivers_to_avoid": []
+        }
+
+
+def _collect_form_data() -> dict:
+    """Collect recent form data for top drivers. Called in a thread."""
+    top_drivers = ["VER", "LEC", "NOR", "SAI", "PIA", "HAM", "RUS", "ALO"]
+    form_data = {}
+    for drv in top_drivers:
+        try:
+            form = get_recent_form(drv, n=3)
+            if form:
+                form_data[drv] = form.get("recent", [])
+        except:
+            continue
+    return form_data
