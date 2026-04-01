@@ -7,6 +7,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import os
 import fastf1
+import httpx
 from dotenv import load_dotenv
 
 from f1_data import (
@@ -179,3 +180,69 @@ def _collect_form_data() -> dict:
         except:
             continue
     return form_data
+
+
+# --- Standings Endpoints (via Jolpica API) ---
+
+@app.get("/api/standings/drivers", dependencies=[Depends(verify_api_key)])
+@limiter.limit("30/minute")
+async def fetch_driver_standings(request: Request, year: int = 2025):
+    """Fetch current driver championship standings from Jolpica (Ergast) API."""
+    url = f"https://api.jolpi.ca/ergast/f1/{year}/driverStandings.json"
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+        standings_list = data["MRData"]["StandingsTable"]["StandingsLists"]
+        if not standings_list:
+            raise HTTPException(status_code=404, detail="No standings data found.")
+        standings = standings_list[0]["DriverStandings"]
+        result = []
+        for entry in standings:
+            result.append({
+                "position": int(entry["position"]),
+                "points": float(entry["points"]),
+                "wins": int(entry["wins"]),
+                "code": entry["Driver"].get("code", entry["Driver"]["driverId"].upper()[:3]),
+                "name": f"{entry['Driver']['givenName']} {entry['Driver']['familyName']}",
+                "nationality": entry["Driver"]["nationality"],
+                "team": entry["Constructors"][0]["name"] if entry["Constructors"] else "Unknown",
+                "positionChange": 0,
+            })
+        return {"standings": result, "season": year, "round": standings_list[0].get("round", "N/A")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch standings: {str(e)}")
+
+
+@app.get("/api/standings/constructors", dependencies=[Depends(verify_api_key)])
+@limiter.limit("30/minute")
+async def fetch_constructor_standings(request: Request, year: int = 2025):
+    """Fetch current constructor championship standings from Jolpica (Ergast) API."""
+    url = f"https://api.jolpi.ca/ergast/f1/{year}/constructorStandings.json"
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+        standings_list = data["MRData"]["StandingsTable"]["StandingsLists"]
+        if not standings_list:
+            raise HTTPException(status_code=404, detail="No constructor standings found.")
+        standings = standings_list[0]["ConstructorStandings"]
+        result = []
+        for entry in standings:
+            result.append({
+                "position": int(entry["position"]),
+                "points": float(entry["points"]),
+                "wins": int(entry["wins"]),
+                "name": entry["Constructor"]["name"],
+                "nationality": entry["Constructor"]["nationality"],
+                "positionChange": 0,
+            })
+        return {"standings": result, "season": year, "round": standings_list[0].get("round", "N/A")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch constructor standings: {str(e)}")

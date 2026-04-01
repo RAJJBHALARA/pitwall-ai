@@ -248,18 +248,16 @@ export default function RivalryTracker() {
                 <div className="flex h-2 w-full bg-[#353534] rounded-full overflow-hidden gap-1 shadow-inner">
                   <motion.div 
                     initial={{ width: 0 }}
-                    whileInView={{ width: stat.p1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: dur(0.8), delay: i * 0.15 }}
+                    animate={{ width: stat.p1 }}
+                    transition={{ duration: dur(0.8), delay: i * 0.1 }}
                     className={`h-full ${stat.isSpecial ? 'bg-[#01d2be]' : 'bg-gradient-to-l from-transparent to-[#e10600]'} rounded-full`}
                   />
                   <div className="h-full bg-[#2a2a2a] rounded-full flex-1"></div>
                   {!stat.isSpecial && (
                      <motion.div 
                       initial={{ width: 0 }}
-                      whileInView={{ width: stat.p2 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: dur(0.8), delay: i * 0.15 }}
+                      animate={{ width: stat.p2 }}
+                      transition={{ duration: dur(0.8), delay: i * 0.1 }}
                       className="h-full bg-gradient-to-r from-transparent to-[#e10600] rounded-full"
                     />
                   )}

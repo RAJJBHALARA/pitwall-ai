@@ -9,10 +9,35 @@ const api = axios.create({
   }
 })
 
+let activeRequests = 0;
+let timeoutTimer = null;
+
+api.interceptors.request.use(config => {
+  activeRequests++;
+  if (activeRequests === 1) {
+    timeoutTimer = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('slow-api', { detail: true }));
+    }, 5000);
+  }
+  return config;
+});
+
 api.interceptors.response.use(
-  res => res,
+  res => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    if (activeRequests === 0) {
+      clearTimeout(timeoutTimer);
+      window.dispatchEvent(new CustomEvent('slow-api', { detail: false }));
+    }
+    return res;
+  },
   err => {
-    const status = err.response?.status
+    activeRequests = Math.max(0, activeRequests - 1);
+    if (activeRequests === 0) {
+      clearTimeout(timeoutTimer);
+      window.dispatchEvent(new CustomEvent('slow-api', { detail: false }));
+    }
+    const status = err.response?.status;
     if (status === 429) throw new Error("RATE_LIMIT")
     if (status === 403) throw new Error("AUTH_ERROR")
     if (status === 404) throw new Error("NO_DATA")
@@ -40,3 +65,9 @@ export const getTelemetry = (year, race, driver, lap) =>
 
 export const getFantasyPicks = (race, year) =>
   api.post('/api/fantasy-picks', { race, year })
+
+export const getDriverStandings = (year) =>
+  api.get(`/api/standings/drivers?year=${year}`)
+
+export const getConstructorStandings = (year) =>
+  api.get(`/api/standings/constructors?year=${year}`)

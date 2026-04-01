@@ -1,16 +1,122 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Cloud, Timer } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, Cloud, Timer, Flag, Zap, ChevronRight, Clock } from 'lucide-react';
+import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { useAnimatedCounter } from '../utils/useAnimatedCounter';
+import { useRaceCountdown } from '../utils/useRaceCountdown';
 import { useState, useEffect } from 'react';
 import PageTransition from '../components/PageTransition';
 import { getDrivers } from '../services/api';
+import { getTeamColor } from '../utils/teamColors';
+
+// ── Last Race Summary Card ──────────────────────────────────────────────────
+const LAST_RACE = {
+  name: 'Japanese Grand Prix',
+  circuit: 'Suzuka Circuit',
+  flag: '🇯🇵',
+  date: '30 Mar 2026',
+  round: 'Round 3 of 22',
+  fastestLap: { driver: 'NOR', time: '1:31.204', team: 'McLaren' },
+  podium: [
+    { pos: 1, code: 'NOR', name: 'Lando Norris',     team: 'McLaren',         pts: '+25', flag: '🇬🇧' },
+    { pos: 2, code: 'VER', name: 'Max Verstappen',   team: 'Red Bull Racing', pts: '+18', flag: '🇳🇱' },
+    { pos: 3, code: 'LEC', name: 'Charles Leclerc',  team: 'Ferrari',         pts: '+15', flag: '🇲🇨' },
+  ],
+};
+
+function LastRaceCard({ dur }) {
+  const shouldReduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: shouldReduceMotion ? 0 : dur(0.55) }}
+      className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden"
+    >
+      {/* Card header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <span className="text-xl">{LAST_RACE.flag}</span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-['Space_Grotesk'] text-[10px] font-bold tracking-[0.2em] text-[#e10600] uppercase">Last Race</span>
+              <span className="font-['Space_Grotesk'] text-[10px] text-[#444] uppercase tracking-widest">{LAST_RACE.round}</span>
+            </div>
+            <h3 className="font-['Space_Grotesk'] font-black text-white text-lg leading-tight">{LAST_RACE.name}</h3>
+          </div>
+        </div>
+        <div className="hidden sm:flex items-center gap-1.5 text-[#555]">
+          <Clock size={11} />
+          <span className="font-['Space_Grotesk'] text-[10px] uppercase tracking-widest">{LAST_RACE.date}</span>
+        </div>
+      </div>
+
+      {/* Podium */}
+      <div className="grid grid-cols-3 divide-x divide-white/5">
+        {LAST_RACE.podium.map((p, i) => {
+          const color = getTeamColor(p.team);
+          const medals = ['🥇', '🥈', '🥉'];
+          return (
+            <motion.div
+              key={p.pos}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 + i * 0.1, duration: shouldReduceMotion ? 0 : dur(0.4) }}
+              className="px-4 py-5 flex flex-col gap-2 hover:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{medals[i]}</span>
+                <span className="font-['Space_Grotesk'] text-[10px] text-[#555] uppercase tracking-widest">P{p.pos}</span>
+              </div>
+              {/* team color bar */}
+              <div className="h-0.5 w-8 rounded-full" style={{ background: color }} />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">{p.flag}</span>
+                  <span
+                    className="font-['Space_Grotesk'] font-black text-base text-white"
+                    style={{ textShadow: `0 0 20px ${color}60` }}
+                  >{p.code}</span>
+                </div>
+                <div className="text-[10px] text-[#555] truncate mt-0.5">{p.team}</div>
+              </div>
+              <div
+                className="font-['Space_Grotesk'] font-bold text-sm"
+                style={{ color }}
+              >{p.pts}</div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Fastest Lap + CTA */}
+      <div className="flex items-center justify-between px-6 py-3 border-t border-white/5 bg-[#0d0d0d]">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-[#a855f7]" />
+          <span className="font-['Space_Grotesk'] text-[10px] text-[#666] uppercase tracking-widest">Fastest Lap</span>
+          <span className="font-['Space_Grotesk'] font-bold text-xs text-[#a855f7]">
+            {LAST_RACE.fastestLap.driver} — {LAST_RACE.fastestLap.time}
+          </span>
+        </div>
+        <Link
+          to="/standings"
+          className="flex items-center gap-1 font-['Space_Grotesk'] text-[10px] font-bold text-[#e10600] uppercase tracking-widest hover:gap-2 transition-all"
+        >
+          Full Standings <ChevronRight size={12} />
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Home() {
   const shouldReduceMotion = useReducedMotion();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d;
 
   const trackTemp = useAnimatedCounter(42.8, 1.5, 0.6, true);
+  const { countdowns, activeWeekend } = useRaceCountdown();
   const heroWords = ['THE', 'KINETIC'];
 
   const [leader, setLeader] = useState({ name: 'Max Verstappen', code: 'VER', team: 'Red Bull Racing' });
@@ -85,27 +191,146 @@ export default function Home() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: dur(0.6) }}
-              className="hidden md:flex flex-col items-end"
+              className="hidden md:flex flex-col items-end gap-3"
             >
-              <div className="bg-[#2a2a2a]/60 backdrop-blur-md p-6 rounded-xl border border-white/5 w-80">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="font-['Space_Grotesk'] text-xs font-bold text-[#999999] tracking-widest uppercase">Track Surface</span>
-                  <span className="text-[#47efda] font-bold">OPTIMAL</span>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <span className="text-3xl font-['Space_Grotesk'] font-bold text-white">{trackTemp}°C</span>
-                    <span className="text-xs text-[#999999] pb-1 uppercase">Asphalt Temp</span>
-                  </div>
-                  <div className="h-1 bg-[#353534] rounded-full overflow-hidden">
+              {/* Race Weekend Active Banner */}
+              <AnimatePresence>
+                {activeWeekend && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="w-80 px-4 py-2 rounded-lg bg-[#e10600]/20 border border-[#e10600]/60 flex items-center gap-2"
+                  >
                     <motion.div
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ delay: 0.8, duration: dur(1) }}
-                      style={{ transformOrigin: 'left' }}
-                      className="h-full bg-[#47efda] w-3/4"
+                      animate={{ opacity: [1, 0.3, 1] }}
+                      transition={{ duration: 1.2, repeat: Infinity }}
+                      className="w-2 h-2 rounded-full bg-[#e10600] flex-shrink-0"
                     />
+                    <span className="font-['Space_Grotesk'] text-xs font-bold text-[#e10600] uppercase tracking-widest">
+                      LIVE THIS WEEKEND — {activeWeekend.shortName}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Race Countdown Panel */}
+              <div className="bg-[#131313]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden w-80 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+                  <div className="flex items-center gap-2">
+                    <Flag size={13} className="text-[#e10600]" />
+                    <span className="font-['Space_Grotesk'] text-[10px] font-bold tracking-[0.2em] text-[#999999] uppercase">2026 Race Calendar</span>
                   </div>
+                  <motion.div
+                    animate={{ opacity: [1, 0.4, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="flex items-center gap-1"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#47efda]" />
+                    <span className="text-[9px] text-[#47efda] font-bold uppercase tracking-wider">Live</span>
+                  </motion.div>
+                </div>
+
+                {/* Countdown Rows */}
+                <div className="divide-y divide-white/5">
+                  {countdowns.length === 0 ? (
+                    <div className="px-5 py-6 text-center">
+                      <span className="text-[#999] text-xs">Season Complete 🏆</span>
+                    </div>
+                  ) : (
+                    countdowns.map((race, i) => {
+                      const cd = race.countdown;
+                      const label = i === 0 ? 'NEXT' : i === 1 ? 'THEN' : 'AFTER';
+                      const labelColor = i === 0 ? '#e10600' : i === 1 ? '#ffaa00' : '#999999';
+                      return (
+                        <motion.div
+                          key={race.round}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.6 + i * 0.12, duration: dur(0.4) }}
+                          className={`px-5 py-3.5 ${
+                            race.isThisWeekend ? 'bg-[#e10600]/5' : ''
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span
+                                  className="text-[9px] font-bold tracking-[0.2em] uppercase font-['Space_Grotesk']"
+                                  style={{ color: labelColor }}
+                                >
+                                  {label}
+                                </span>
+                                <span className="text-base">{race.flag}</span>
+                                <span className="text-white font-['Space_Grotesk'] font-bold text-xs truncate">
+                                  {race.shortName} GP
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-[#666] truncate">
+                                {race.circuit} · {race.istTime}
+                              </div>
+                            </div>
+
+                            {/* Countdown digits */}
+                            {cd ? (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {cd.days > 0 && (
+                                  <>
+                                    <div className="text-center">
+                                      <div className={`font-['Space_Grotesk'] font-black text-sm tabular-nums ${
+                                        i === 0 ? 'text-white' : 'text-[#666]'
+                                      }`}>
+                                        {String(cd.days).padStart(2,'0')}
+                                      </div>
+                                      <div className="text-[8px] text-[#555] uppercase">d</div>
+                                    </div>
+                                    <div className="text-[#444] text-xs font-bold mb-2">:</div>
+                                  </>
+                                )}
+                                <div className="text-center">
+                                  <div className={`font-['Space_Grotesk'] font-black text-sm tabular-nums ${
+                                    i === 0 ? 'text-white' : 'text-[#666]'
+                                  }`}>
+                                    {String(cd.hours).padStart(2,'0')}
+                                  </div>
+                                  <div className="text-[8px] text-[#555] uppercase">h</div>
+                                </div>
+                                <div className="text-[#444] text-xs font-bold mb-2">:</div>
+                                <div className="text-center">
+                                  <div className={`font-['Space_Grotesk'] font-black text-sm tabular-nums ${
+                                    i === 0 ? 'text-white' : 'text-[#666]'
+                                  }`}>
+                                    {String(cd.minutes).padStart(2,'0')}
+                                  </div>
+                                  <div className="text-[8px] text-[#555] uppercase">m</div>
+                                </div>
+                                {i === 0 && (
+                                  <>
+                                    <div className="text-[#444] text-xs font-bold mb-2">:</div>
+                                    <div className="text-center">
+                                      <div className="font-['Space_Grotesk'] font-black text-sm tabular-nums text-[#e10600]">
+                                        {String(cd.seconds).padStart(2,'0')}
+                                      </div>
+                                      <div className="text-[8px] text-[#555] uppercase">s</div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[#e10600] text-[10px] font-bold uppercase">ON NOW</span>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 py-2.5 border-t border-white/5 flex items-center gap-1.5">
+                  <Zap size={10} className="text-[#e10600]" />
+                  <span className="text-[9px] text-[#555] uppercase tracking-widest font-['Space_Grotesk']">All times in IST (UTC+5:30)</span>
                 </div>
               </div>
             </motion.div>
@@ -207,6 +432,11 @@ export default function Home() {
               ))}
             </div>
           </div>
+        </section>
+
+        {/* Last Race Summary Card */}
+        <section className="max-w-screen-2xl mx-auto px-8 py-10">
+          <LastRaceCard dur={dur} />
         </section>
 
         {/* Highlights Section */}

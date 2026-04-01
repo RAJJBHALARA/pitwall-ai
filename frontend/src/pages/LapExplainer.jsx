@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { Play, SkipForward, Info, Timer, Zap, Gauge, Map } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, SkipForward, Info, Timer, Zap, Gauge, Map, AlertCircle } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAnimatedCounter } from '../utils/useAnimatedCounter';
 import { useTypewriter } from '../utils/useTypewriter';
 import ScrollProgress from '../components/ScrollProgress';
 import PageTransition from '../components/PageTransition';
+import CustomDropdown from '../components/CustomDropdown';
+import { getAvailableRaces, getDrivers, getTelemetry } from '../services/api';
 
 export default function LapExplainer() {
   const shouldReduceMotion = useReducedMotion();
@@ -13,13 +15,75 @@ export default function LapExplainer() {
 
   const [isPlaying, setIsPlaying] = useState(false);
   
-  const lapTime = useAnimatedCounter(1.11, 1, 0.5, true);
-  const gear = useAnimatedCounter(8, 0.5, 0.8);
-  const rpm = useAnimatedCounter(12450, 1.5, 1);
-  const brakePressure = useAnimatedCounter(98.4, 1.5, 1.2, true);
+  const [year, setYear] = useState('2024');
+  const [gp, setGp] = useState('Abu Dhabi Grand Prix');
+  const [driver, setDriver] = useState('VER');
+  const [lap, setLap] = useState('15');
+  
+  const [options, setOptions] = useState({ races: [], drivers: [] });
+  const lapOptions = Array.from({length: 80}, (_, i) => String(i + 1));
+  
+  const [telemetry, setTelemetry] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const aiAnalysis = "Telemetry shows a delayed downshift at Turn 4, costing 0.12s in exit velocity. The ERS deployment was optimal through the Tunnel, compensating for the early traction loss. Monitor brake temps on next push.";
-  const displayedAnalysis = useTypewriter(aiAnalysis, 35);
+  useEffect(() => {
+    let active = true;
+    Promise.all([getAvailableRaces(year), getDrivers(year)])
+      .then(([rRes, dRes]) => {
+        if (!active) return;
+        const races = rRes.data.races || [];
+        const drivers = dRes.data.drivers || [];
+        setOptions({ races, drivers });
+        if (races.length && !races.includes(gp)) setGp(races[0]);
+        if (drivers.length && !drivers.find(d => d.code === driver)) setDriver(drivers[0].code);
+      }).catch(err => {
+        if (!active) return;
+        setError(err.message === "RATE_LIMIT" ? "Rate limit reached. Please wait." : "Failed to load options");
+      });
+    return () => { active = false; };
+  }, [year]);
+
+  useEffect(() => {
+    let active = true;
+    if (!options.races.includes(gp)) return;
+    
+    setLoading(true);
+    setError(null);
+    getTelemetry(year, gp, driver, lap)
+      .then(res => {
+        if (active) {
+          setTelemetry(res.data);
+          setLoading(false);
+        }
+      })
+      .catch(err => {
+        if (active) {
+          setError(err.message === "RATE_LIMIT" ? "Rate limit reached." : "Failed to fetch telemetry.");
+          setTelemetry(null);
+          setLoading(false);
+        }
+      });
+    return () => { active = false; };
+  }, [year, gp, driver, lap, options.races]);
+
+  const maxSpeed = useAnimatedCounter(telemetry?.max_speed || 0, 1.5, 0.5);
+  const avgSpeed = useAnimatedCounter(telemetry?.avg_speed || 0, 1.5, 0.8);
+  const s1 = useAnimatedCounter(telemetry?.sector1 || 0, 1.5, 1, true);
+  const s2 = useAnimatedCounter(telemetry?.sector2 || 0, 1.5, 1.2, true);
+  const s3 = useAnimatedCounter(telemetry?.sector3 || 0, 1.5, 1.4, true);
+
+  const aiAnalysis = telemetry?.aiAnalysis || "Pending telemetry analysis... Please wait while the AI generates insights.";
+  const displayedAnalysis = useTypewriter(error ? "Analysis Failed." : aiAnalysis, 35);
+  
+  const lapTimeStr = telemetry?.lap_time || "--:--.---";
+  
+  let deltaStr = "";
+  if (telemetry?.sector_deltas) {
+    const d = telemetry.sector_deltas;
+    const sum = d.s1 + d.s2 + d.s3;
+    deltaStr = `${sum > 0 ? "+" : ""}${sum.toFixed(3)}s`;
+  }
 
   const shakeVariants = {
     shake: {
@@ -42,26 +106,23 @@ export default function LapExplainer() {
             >
               LAP <span className="text-[#e10600]">EXPLAINER</span>
             </motion.h1>
-            <p className="text-[#e9bcb5] text-sm mt-2 opacity-60">Session: Q3 — Final Push</p>
+            <p className="text-[#e9bcb5] text-sm mt-2 opacity-60">AI-Powered Telemetry Breakdown</p>
           </div>
-          <div className="flex gap-4">
-             <motion.button 
-               whileHover={{ scale: 1.05 }}
-               whileTap={{ scale: 0.95 }}
-               onClick={() => setIsPlaying(!isPlaying)}
-               className="flex items-center gap-2 px-6 py-3 bg-[#e10600] text-white font-bold rounded-full text-xs uppercase tracking-widest shadow-lg shadow-[#e10600]/20"
-             >
-               {isPlaying ? 'PAUSE ANALYSIS' : 'PLAY REPLAY'} <Play size={14} fill={isPlaying ? 'none' : 'currentColor'} />
-             </motion.button>
-             <motion.button 
-               whileHover={{ scale: 1.05 }}
-               whileTap={{ scale: 0.95 }}
-               className="flex items-center gap-2 px-6 py-3 bg-[#1c1b1b] border border-white/10 text-white font-bold rounded-full text-xs uppercase tracking-widest"
-             >
-               NEXT TURN <SkipForward size={14} />
-             </motion.button>
+          
+          <div className="flex flex-wrap gap-4">
+            <CustomDropdown label="Season" value={year} options={['2024', '2023']} onChange={setYear} />
+            <CustomDropdown label="Grand Prix" value={gp} options={options.races} onChange={setGp} />
+            <CustomDropdown label="Driver" value={driver} options={options.drivers.map(d => d.code)} onChange={setDriver} />
+            <CustomDropdown label="Lap" value={lap} options={lapOptions} onChange={setLap} />
           </div>
         </div>
+
+        {error && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8 p-4 bg-red-900/20 border border-red-500/50 rounded flex items-center gap-3 text-red-500">
+            <AlertCircle size={20} />
+            <span className="font-['Space_Grotesk'] font-bold uppercase tracking-widest text-sm">{error}</span>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Track Map Visualization */}
@@ -118,7 +179,13 @@ export default function LapExplainer() {
           </motion.div>
 
           {/* Real-time Telemetry Bento */}
-          <div className="space-y-6">
+          <div className="space-y-6 relative">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#1c1b1b]/80 rounded-2xl backdrop-blur-sm">
+                <div className="w-8 h-8 rounded-full border-2 border-[#e10600]/30 border-t-[#e10600] animate-spin"></div>
+              </div>
+            )}
+            
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -129,7 +196,10 @@ export default function LapExplainer() {
                 <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">LAP TIME (REL)</span>
                 <Timer size={14} className="text-[#47efda]" />
               </div>
-              <div className="text-3xl font-['Space_Grotesk'] font-bold text-white">1:{lapTime}<span className="text-sm font-normal text-[#47efda] ml-2 font-body">-0.045s</span></div>
+              <div className="text-3xl font-['Space_Grotesk'] font-bold text-white">
+                {lapTimeStr}
+                <span className={`text-sm font-normal ml-2 font-body ${deltaStr.startsWith('-') ? 'text-[#47efda]' : 'text-[#e10600]'}`}>{deltaStr}</span>
+              </div>
             </motion.div>
 
             <motion.div 
@@ -139,14 +209,17 @@ export default function LapExplainer() {
               className="bg-[#1c1b1b] p-6 rounded-2xl border border-white/5 flex flex-col justify-between h-[120px]"
             >
               <div className="flex justify-between items-start">
-                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">TRANSMISSION</span>
+                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">TELEMETRY SPEEDS</span>
                 <Zap size={14} className="text-[#e10600]" />
               </div>
               <div className="flex items-end justify-between">
-                <div className="text-4xl font-['Space_Grotesk'] font-bold text-white">{gear}</div>
+                <div>
+                   <p className="text-[10px] text-[#999999] uppercase font-bold">MAX SPEED</p>
+                   <div className="text-3xl font-['Space_Grotesk'] font-bold text-white">{maxSpeed}<span className="text-sm font-normal text-[#999999] ml-1">KPH</span></div>
+                </div>
                 <div className="text-right">
-                   <p className="text-[10px] text-[#999999] uppercase font-bold">RPM</p>
-                   <p className="text-lg font-['Space_Grotesk'] font-bold text-white">{rpm}</p>
+                   <p className="text-[10px] text-[#999999] uppercase font-bold">AVG SPEED</p>
+                   <p className="text-2xl font-['Space_Grotesk'] font-bold text-white">{avgSpeed}</p>
                 </div>
               </div>
             </motion.div>
@@ -158,18 +231,23 @@ export default function LapExplainer() {
               className="bg-[#1c1b1b] p-6 rounded-2xl border border-white/5 flex flex-col justify-between h-[120px]"
             >
               <div className="flex justify-between items-start">
-                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">BRAKE PRESSURE</span>
+                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">SECTOR SPLITS</span>
                 <Gauge size={14} className="text-[#e10600]" />
               </div>
-              <div className="w-full bg-[#2a2a2a] h-1.5 rounded-full overflow-hidden mt-2">
-                 <motion.div 
-                   initial={{ width: 0 }}
-                   animate={{ width: `${brakePressure}%` }}
-                   transition={{ duration: 1.5 }}
-                   className="h-full bg-[#e10600]" 
-                 />
+              <div className="flex justify-between items-end mt-2">
+                 <div className="text-left">
+                   <div className="text-[10px] text-[#999999] font-bold">S1</div>
+                   <div className="text-lg font-['Space_Grotesk'] text-white font-bold">{s1}s</div>
+                 </div>
+                 <div className="text-center">
+                   <div className="text-[10px] text-[#999999] font-bold">S2</div>
+                   <div className="text-lg font-['Space_Grotesk'] text-white font-bold">{s2}s</div>
+                 </div>
+                 <div className="text-right">
+                   <div className="text-[10px] text-[#999999] font-bold">S3</div>
+                   <div className="text-lg font-['Space_Grotesk'] text-white font-bold">{s3}s</div>
+                 </div>
               </div>
-              <div className="text-2xl font-['Space_Grotesk'] font-bold text-white text-right">{brakePressure}%</div>
             </motion.div>
           </div>
         </div>
@@ -195,18 +273,27 @@ export default function LapExplainer() {
 
            <motion.div 
              variants={shakeVariants}
-             animate="shake"
-             className="bg-[#1c1b1b] p-8 rounded-2xl border border-[#e10600]/20 flex flex-col justify-center"
+             animate={telemetry?.sector_deltas && (telemetry.sector_deltas.s1 + telemetry.sector_deltas.s2 + telemetry.sector_deltas.s3) > 0 ? "shake" : ""}
+             className="bg-[#1c1b1b] p-8 rounded-2xl border border-[#e10600]/20 flex flex-col justify-center relative overflow-hidden"
            >
+              {loading && (
+                <div className="absolute inset-0 z-10 bg-[#1c1b1b]/50 backdrop-blur-[2px]" />
+              )}
               <div className="flex items-center gap-3 mb-4">
-                 <div className="w-3 h-3 bg-[#e10600] rounded-full animate-pulse"></div>
-                 <h3 className="text-xs font-bold text-white uppercase tracking-widest">Performance Loss Detected</h3>
+                 <div className={`w-3 h-3 rounded-full animate-pulse ${deltaStr.startsWith('-') ? 'bg-[#47efda]' : 'bg-[#e10600]'}`}></div>
+                 <h3 className="text-xs font-bold text-white uppercase tracking-widest">
+                   {deltaStr.startsWith('-') ? 'Performance Gain Detected' : 'Performance Loss Detected'}
+                 </h3>
               </div>
               <div className="flex justify-between items-baseline">
-                 <p className="text-5xl font-['Space_Grotesk'] font-extrabold text-[#e10600] tracking-tighter">+0.128s</p>
-                 <p className="text-xs text-[#999999] uppercase font-bold">VS BEST SECTOR 1</p>
+                 <p className={`text-5xl font-['Space_Grotesk'] font-extrabold tracking-tighter ${deltaStr.startsWith('-') ? 'text-[#47efda]' : 'text-[#e10600]'}`}>
+                   {deltaStr || "--"}
+                 </p>
+                 <p className="text-xs text-[#999999] uppercase font-bold">VS FASTEST LAP</p>
               </div>
-              <p className="text-xs text-[#e9bcb5] mt-4 leading-relaxed">Turn 7 exit traction loss confirmed. Tire surface temp spiked to 118°C.</p>
+              <p className="text-xs text-[#e9bcb5] mt-4 leading-relaxed">
+                {telemetry ? `Analysis of lap ${lap} complete.` : 'Waiting for telemetry data...'}
+              </p>
            </motion.div>
         </div>
       </div>

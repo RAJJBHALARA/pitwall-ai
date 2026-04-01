@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useAnimatedCounter } from '../utils/useAnimatedCounter';
 import CustomDropdown from '../components/CustomDropdown';
 import ScrollProgress from '../components/ScrollProgress';
-import { getLapTimes, getTireStrategy } from '../services/api';
+import { getLapTimes, getTireStrategy, getAvailableRaces } from '../services/api';
 import PageTransition from '../components/PageTransition';
 
 export default function RaceAnalysis() {
@@ -23,10 +23,31 @@ export default function RaceAnalysis() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  const [races, setRaces] = useState(['Abu Dhabi Grand Prix']);
   const [lapData, setLapData] = useState({ drivers: [], laps: {} });
   const [tireStrategy, setTireStrategy] = useState([]);
 
   useEffect(() => {
+    let active = true;
+    getAvailableRaces(season)
+      .then(res => {
+        if (!active) return;
+        const fetchedRaces = res.data.races || [];
+        setRaces(fetchedRaces);
+        if (fetchedRaces.length && !fetchedRaces.includes(gp)) {
+          setGp(fetchedRaces[0]);
+        }
+      })
+      .catch(err => {
+        if (active) setError("Failed to load races for season.");
+      });
+    return () => { active = false; };
+  }, [season]);
+
+  useEffect(() => {
+    if (!races.includes(gp)) return;
+
+    let active = true;
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -40,19 +61,24 @@ export default function RaceAnalysis() {
           getTireStrategy(parseInt(season), shortGp)
         ]);
         
-        setLapData(lapsRes.data || { drivers: [], laps: {} });
-        setTireStrategy(tireRes.data?.data || []);
+        if (active) {
+          setLapData(lapsRes.data || { drivers: [], laps: {} });
+          setTireStrategy(tireRes.data?.data || []);
+        }
       } catch (err) {
-        setError(err.message === 'RATE_LIMIT' ? 'Too many requests. Wait 1 minute.' : 
-                  err.message === 'AUTH_ERROR' ? 'Authentication failed.' : 
-                  err.message === 'NO_DATA' ? 'Data not available for this selection.' : 
-                  'Something went wrong. Try again.');
+        if (active) {
+          setError(err.message === 'RATE_LIMIT' ? 'Too many requests. Wait 1 minute.' : 
+                    err.message === 'AUTH_ERROR' ? 'Authentication failed.' : 
+                    err.message === 'NO_DATA' ? 'Data not available for this selection.' : 
+                    'Something went wrong. Try again.');
+        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     fetchData();
-  }, [season, gp, session]);
+    return () => { active = false; };
+  }, [season, gp, session, races]);
 
   // Generate SVG path string from array of lap times
   const generatePath = (laps) => {
@@ -103,7 +129,7 @@ export default function RaceAnalysis() {
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           <CustomDropdown label="Season" value={season} options={['2024', '2023']} onChange={setSeason} />
-          <CustomDropdown label="Grand Prix" value={gp} options={['Monaco', 'Silverstone', 'Spa', 'Suzuka', 'Monza']} onChange={setGp} />
+          <CustomDropdown label="Grand Prix" value={gp} options={races} onChange={setGp} />
           <CustomDropdown label="Session" value={session} options={['RACE', 'QUALIFYING', 'SPRINT']} onChange={setSession} />
         </motion.section>
 

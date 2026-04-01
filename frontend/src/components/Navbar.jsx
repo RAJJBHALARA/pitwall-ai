@@ -12,6 +12,7 @@ export default function Navbar() {
     { name: 'Race Analysis', path: '/race-analysis' },
     { name: 'Rivalry Tracker', path: '/rivalry-tracker' },
     { name: 'Fantasy Picks', path: '/fantasy-picks' },
+    { name: 'Standings', path: '/standings' },
     { name: 'Lap Explainer', path: '/lap-explainer' },
   ];
 

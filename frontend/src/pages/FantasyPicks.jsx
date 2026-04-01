@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Trophy, TrendingDown, TrendingUp, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Sparkles, Trophy, TrendingDown, TrendingUp, AlertCircle, ShieldAlert, Share2, Check, Copy } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useStaggerChildren } from '../utils/useStaggerChildren';
 import { useTypewriter } from '../utils/useTypewriter';
@@ -27,6 +27,47 @@ export default function FantasyPicks() {
   const [driversToAvoid, setDriversToAvoid] = useState([]);
 
   const displayedInsight = useTypewriter(keyInsight, 40);
+
+  // Share state
+  const [shareState, setShareState] = useState('idle'); // idle | copied | tweeted
+
+  function buildTweetText() {
+    const driverLine = drivers.slice(0, 5).map(d => d.code || d.name).join(' | ');
+    const teamLine = constructor ? constructor.name : 'N/A';
+    const race = selectedRace || 'the next race';
+    return encodeURIComponent(
+      `My PitWall AI picks for ${race} 🏎️\n` +
+      `Drivers: ${driverLine}\n` +
+      `Constructor: ${teamLine}\n` +
+      `Powered by @PitWallAI\n` +
+      `github.com/RAJJBHALARA/pitwall-ai\n` +
+      `#F1 #F1Fantasy #Formula1`
+    );
+  }
+
+  function handleShare() {
+    if (drivers.length === 0) return;
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${buildTweetText()}`;
+    window.open(tweetUrl, '_blank', 'noopener,noreferrer');
+    setShareState('tweeted');
+    setTimeout(() => setShareState('idle'), 3000);
+  }
+
+  function handleCopy() {
+    if (drivers.length === 0) return;
+    const driverLine = drivers.slice(0, 5).map(d => d.code || d.name).join(', ');
+    const teamLine = constructor ? constructor.name : 'N/A';
+    const text =
+      `My PitWall AI picks for ${selectedRace || 'the next race'} 🏎️\n` +
+      `Drivers: ${driverLine}\n` +
+      `Constructor: ${teamLine}\n` +
+      `Powered by @PitWallAI | github.com/RAJJBHALARA/pitwall-ai\n` +
+      `#F1 #F1Fantasy #Formula1`;
+    navigator.clipboard.writeText(text).then(() => {
+      setShareState('copied');
+      setTimeout(() => setShareState('idle'), 2500);
+    });
+  }
 
   // Avatar map for known drivers
   const avatarMap = {
@@ -202,6 +243,60 @@ export default function FantasyPicks() {
               >
                 Assemble Auto-Lineup <Sparkles size={14} />
               </motion.button>
+
+              {/* Share Picks */}
+              <div className="mt-3 flex gap-2">
+                <motion.button
+                  id="share-tweet-btn"
+                  onClick={handleShare}
+                  disabled={drivers.length === 0 || isLoading}
+                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: 1.02 }}
+                  className={`flex-1 py-3 rounded-xl font-['Space_Grotesk'] font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all border ${
+                    drivers.length === 0 || isLoading
+                      ? 'border-white/5 text-[#555] cursor-not-allowed'
+                      : shareState === 'tweeted'
+                      ? 'border-[#1DA1F2]/50 bg-[#1DA1F2]/10 text-[#1DA1F2]'
+                      : 'border-[#1DA1F2]/30 bg-[#1DA1F2]/5 text-[#1DA1F2] hover:bg-[#1DA1F2]/15'
+                  }`}
+                >
+                  {shareState === 'tweeted' ? <Check size={13} /> : <Share2 size={13} />}
+                  {shareState === 'tweeted' ? 'Tweeted!' : 'Share on X'}
+                </motion.button>
+
+                <motion.button
+                  id="copy-picks-btn"
+                  onClick={handleCopy}
+                  disabled={drivers.length === 0 || isLoading}
+                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: 1.02 }}
+                  className={`px-4 py-3 rounded-xl font-['Space_Grotesk'] font-bold text-xs flex items-center justify-center gap-2 transition-all border ${
+                    drivers.length === 0 || isLoading
+                      ? 'border-white/5 text-[#555] cursor-not-allowed'
+                      : shareState === 'copied'
+                      ? 'border-[#47efda]/50 bg-[#47efda]/10 text-[#47efda]'
+                      : 'border-white/10 bg-white/5 text-[#999] hover:text-white hover:border-white/20'
+                  }`}
+                  title="Copy to clipboard"
+                >
+                  {shareState === 'copied' ? <Check size={13} /> : <Copy size={13} />}
+                </motion.button>
+              </div>
+
+              {/* Toast */}
+              <AnimatePresence>
+                {shareState !== 'idle' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    className="mt-2 text-center text-[10px] font-['Space_Grotesk'] font-bold uppercase tracking-widest"
+                    style={{ color: shareState === 'copied' ? '#47efda' : '#1DA1F2' }}
+                  >
+                    {shareState === 'copied' ? '✓ Copied to clipboard!' : '✓ Opening X / Twitter…'}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
 
