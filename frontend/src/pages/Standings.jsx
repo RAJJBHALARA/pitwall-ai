@@ -4,6 +4,7 @@ import { Trophy, TrendingUp, TrendingDown, Minus, RefreshCw, AlertCircle, Award 
 import PageTransition from '../components/PageTransition';
 import { getDriverStandings, getConstructorStandings } from '../services/api';
 import { getTeamColor, DRIVER_DATA, positionChangeLabel } from '../utils/teamColors';
+import { getFlagUrl } from '../utils/flagHelper';
 
 const SEASON_YEAR = 2025; // Last complete data season from Jolpica
 
@@ -48,7 +49,11 @@ function PodiumCard({ driver, rank, tab }) {
       {/* Driver/Team name */}
       <div>
         <div className="flex items-center gap-2">
-          {driverMeta && <span className="text-xl">{driverMeta.flag}</span>}
+          {driverMeta && (
+            <span className="flex items-center justify-center">
+              <img src={getFlagUrl(driver.code)} alt={driver.code} style={{ width: 24, height: 18, borderRadius: 2 }} />
+            </span>
+          )}
           <span className="font-['Space_Grotesk'] font-black text-white text-base leading-tight">
             {tab === 'drivers' ? driver.code : driver.name}
           </span>
@@ -119,7 +124,11 @@ function StandingRow({ entry, index, leaderPoints, tab }) {
       {/* Name + subtitle */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          {driverMeta && <span className="text-sm">{driverMeta.flag}</span>}
+          {driverMeta && (
+            <span className="flex items-center justify-center">
+              <img src={getFlagUrl(entry.code)} alt={entry.code} style={{ width: 24, height: 18, borderRadius: 2 }} />
+            </span>
+          )}
           <span className="font-['Space_Grotesk'] font-bold text-white text-sm truncate">
             {tab === 'drivers' ? entry.name : entry.name}
           </span>

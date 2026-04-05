@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Gauge, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,6 +6,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Navbar() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [mobileMenuOpen]);
 
   const links = [
     { name: 'Home', path: '/' },
@@ -92,39 +103,49 @@ export default function Navbar() {
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
-            className="fixed inset-0 top-20 bg-[#131313] z-40 flex flex-col items-center pt-8 gap-8 border-t border-white/5"
+            transition={{ type: "spring", damping: 25 }}
+            className="fixed inset-0 z-[9999] bg-[#0a0a0a]/98 flex flex-col justify-center items-center"
           >
-            {links.map((link, i) => {
-              const isActive = location.pathname === link.path;
-              return (
-                <motion.div
-                  key={link.path}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 + 0.1 }}
-                >
-                  <Link
-                    to={link.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`font-['Space_Grotesk'] text-2xl font-bold uppercase tracking-wider ${
-                      isActive ? 'text-[#e10600]' : 'text-white'
-                    }`}
-                  >
-                    {link.name}
-                  </Link>
-                </motion.div>
-              );
-            })}
-            <motion.button 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="mt-8 bg-[#e10600] text-white px-8 py-3 rounded-xl font-['Space_Grotesk'] font-bold uppercase tracking-wider"
+            {/* Close Button Top Right */}
+            <button 
+              className="absolute top-6 right-6 text-white p-2"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Live Data
-            </motion.button>
+              <X size={28} />
+            </button>
+
+            <div className="flex flex-col items-center gap-8">
+              {links.map((link, i) => {
+                const isActive = location.pathname === link.path;
+                return (
+                  <motion.div
+                    key={link.path}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 + 0.1 }}
+                  >
+                    <Link
+                      to={link.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`font-['Space_Grotesk'] text-3xl font-bold uppercase tracking-wider ${
+                        isActive ? 'text-[#e10600]' : 'text-white'
+                      }`}
+                    >
+                      {link.name}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+              <motion.button 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="mt-8 bg-[#e10600] text-white px-8 py-3 rounded-xl font-['Space_Grotesk'] font-bold uppercase tracking-wider"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Live Data
+              </motion.button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

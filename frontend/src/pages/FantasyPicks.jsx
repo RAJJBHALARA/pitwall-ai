@@ -8,6 +8,7 @@ import CustomDropdown from '../components/CustomDropdown';
 import PageTransition from '../components/PageTransition';
 import { getFantasyPicks, getAvailableRaces } from '../services/api';
 import { DRIVER_DATA } from '../utils/teamColors';
+import { getFlagUrl } from '../utils/flagHelper';
 
 export default function FantasyPicks() {
   const shouldReduceMotion = useReducedMotion();
@@ -353,7 +354,9 @@ export default function FantasyPicks() {
 
                        <div className="p-6">
                           <h3 className="font-['Space_Grotesk'] font-bold text-white text-xl mb-1 flex items-center gap-2">
-                            <span>{DRIVER_DATA[driver.code]?.flag}</span>
+                            <span className="flex items-center justify-center">
+                              <img src={getFlagUrl(driver.code)} alt={driver.code} style={{ width: 24, height: 18, borderRadius: 2 }} />
+                            </span>
                             <span>{driver.name}</span>
                           </h3>
                           <p className="text-xs text-[#e9bcb5] font-bold uppercase tracking-tighter opacity-60 mb-3">{driver.team}</p>
