@@ -362,7 +362,7 @@ export default function Home() {
                       </>
                     )}
                   </h2>
-                  {!loading && error && <span className="text-xs text-[#e10600] mt-1 block">{error}</span>}
+                  {!loading && error && <p style={{ color: "#666", fontSize: "0.75rem", marginTop: "0.25rem", display: "block" }}>Live data unavailable</p>}
                 </div>
                 <div className="text-5xl font-['Space_Grotesk'] font-extrabold text-[#ffffff10] italic">01</div>
               </div>

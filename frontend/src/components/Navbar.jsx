@@ -103,49 +103,82 @@ export default function Navbar() {
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25 }}
-            className="fixed inset-0 z-[9999] bg-[#0a0a0a]/98 flex flex-col justify-center items-center"
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              backgroundColor: "#0a0a0a",
+              zIndex: 9999,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "2rem"
+            }}
           >
             {/* Close Button Top Right */}
             <button 
-              className="absolute top-6 right-6 text-white p-2"
               onClick={() => setMobileMenuOpen(false)}
+              style={{
+                position: "absolute",
+                top: "1.5rem",
+                right: "1.5rem",
+                color: "white",
+                fontSize: "1.5rem",
+                background: "none",
+                border: "none",
+                cursor: "pointer"
+              }}
             >
-              <X size={28} />
+              ✕
             </button>
 
-            <div className="flex flex-col items-center gap-8">
-              {links.map((link, i) => {
-                const isActive = location.pathname === link.path;
-                return (
-                  <motion.div
-                    key={link.path}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 + 0.1 }}
+            {/* Nav links centered in middle */}
+            {links.map((link, i) => {
+              const isActive = location.pathname === link.path;
+              return (
+                <motion.div
+                  key={link.path}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <Link
+                    to={link.path}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      document.body.style.overflow = "unset";
+                    }}
+                    style={{
+                      color: isActive ? "#e10600" : "white",
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      textDecoration: "none",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase"
+                    }}
+                    className="font-['Space_Grotesk']"
                   >
-                    <Link
-                      to={link.path}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`font-['Space_Grotesk'] text-3xl font-bold uppercase tracking-wider ${
-                        isActive ? 'text-[#e10600]' : 'text-white'
-                      }`}
-                    >
-                      {link.name}
-                    </Link>
-                  </motion.div>
-                );
-              })}
-              <motion.button 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="mt-8 bg-[#e10600] text-white px-8 py-3 rounded-xl font-['Space_Grotesk'] font-bold uppercase tracking-wider"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Live Data
-              </motion.button>
-            </div>
+                    {link.name}
+                  </Link>
+                </motion.div>
+              );
+            })}
+            <motion.button 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mt-4 bg-[#e10600] text-white px-8 py-3 rounded-xl font-['Space_Grotesk'] font-bold uppercase tracking-wider"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                document.body.style.overflow = "unset";
+              }}
+            >
+              Live Data
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
