@@ -29,7 +29,20 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-[#131313]/60 backdrop-blur-[24px] border-b border-white/5 shadow-[0px_20px_40px_rgba(0,0,0,0.4)]">
+    <nav
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 9000,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        background: 'rgba(8, 8, 8, 0.88)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: '0 0 12px 12px',
+      }}
+    >
       <div className="flex items-center justify-between px-6 md:px-8 h-20 w-full mx-auto max-w-screen-2xl">
         
         {/* Logo */}
@@ -88,7 +101,7 @@ export default function Navbar() {
               ]
             }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="hidden md:block bg-[#e10600] text-white px-6 py-2 rounded-xl font-['Space_Grotesk'] font-bold uppercase text-sm tracking-wider hover:bg-[#c00500] active:scale-95 transition-all"
+            className="hidden md:block bg-[#e10600] text-white px-6 py-2 rounded-full font-['Space_Grotesk'] font-bold uppercase text-sm tracking-wider hover:bg-[#c00500] active:scale-95 transition-all"
           >
             Live Data
           </motion.button>
@@ -102,6 +115,15 @@ export default function Navbar() {
           </button>
         </div>
       </div>
+
+      {/* Red gradient line at bottom */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0, left: '10%', right: '10%',
+        height: 1,
+        background: 'linear-gradient(90deg, transparent, #E10600, transparent)',
+        opacity: 0.5,
+      }} />
 
       {/* Mobile Drawer */}
       <AnimatePresence>
@@ -117,7 +139,9 @@ export default function Navbar() {
               left: 0,
               width: "100vw",
               height: "100vh",
-              backgroundColor: "#0a0a0a",
+              background: "rgba(8, 8, 8, 0.96)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
               zIndex: 9999,
               display: "flex",
               flexDirection: "column",
@@ -188,7 +212,7 @@ export default function Navbar() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.45 }}
-              className="mt-4 bg-[#e10600] text-white px-8 py-3 rounded-xl font-['Space_Grotesk'] font-bold uppercase tracking-wider"
+              className="mt-4 bg-[#e10600] text-white px-8 py-3 rounded-full font-['Space_Grotesk'] font-bold uppercase tracking-wider"
               onClick={() => {
                 setMobileMenuOpen(false);
                 document.body.style.overflow = "unset";

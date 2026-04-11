@@ -191,7 +191,14 @@ export default function RaceAnalysis() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: dur(0.5) }}
-          className="bg-[#1c1b1b] rounded-xl overflow-hidden border border-white/5 shadow-lg"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 16,
+          }}
+          className="overflow-hidden shadow-lg"
         >
           <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div>
@@ -267,7 +274,14 @@ export default function RaceAnalysis() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: dur(0.5) }}
-          className="bg-[#1c1b1b] rounded-xl overflow-hidden border border-white/5 shadow-lg"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 16,
+          }}
+          className="overflow-hidden shadow-lg"
         >
           <div className="p-6">
             <h2 className="font-['Space_Grotesk'] font-bold text-xl tracking-[-0.02em] uppercase text-white">
@@ -355,7 +369,14 @@ export default function RaceAnalysis() {
             viewport={{ once: true }}
             transition={{ duration: dur(0.4) }}
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
-            className="bg-[#1c1b1b] p-8 rounded-xl border border-white/5 flex flex-col justify-between aspect-square md:aspect-auto h-48"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 16,
+            }}
+            className="p-8 flex flex-col justify-between aspect-square md:aspect-auto h-48"
           >
             <Activity className="text-[#e10600] mb-4" size={28} />
             <div>
@@ -377,7 +398,14 @@ export default function RaceAnalysis() {
             viewport={{ once: true }}
             transition={{ delay: 0.1, duration: dur(0.4) }}
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
-            className="bg-[#1c1b1b] p-8 rounded-xl border border-white/5 flex flex-col justify-between aspect-square md:aspect-auto h-48"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 16,
+            }}
+            className="p-8 flex flex-col justify-between aspect-square md:aspect-auto h-48"
           >
             <Timer className="text-[#47efda] mb-4" size={28} />
             <div>
@@ -399,7 +427,14 @@ export default function RaceAnalysis() {
             viewport={{ once: true }}
             transition={{ delay: 0.2, duration: dur(0.4) }}
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
-            className="col-span-1 md:col-span-2 lg:col-span-1 bg-[#1c1b1b] p-8 rounded-xl border border-white/5 flex items-center justify-between h-48"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 16,
+            }}
+            className="col-span-1 md:col-span-2 lg:col-span-1 p-8 flex items-center justify-between h-48"
           >
             <div>
               <div className="text-xs font-['Space_Grotesk'] font-bold text-[#e9bcb5] uppercase tracking-wider mb-2">

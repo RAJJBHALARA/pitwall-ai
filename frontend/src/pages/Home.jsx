@@ -46,7 +46,14 @@ function LastRaceCard({ dur }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: shouldReduceMotion ? 0 : dur(0.55) }}
-      className="bg-[#111] border border-white/5 rounded-2xl overflow-hidden"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 16,
+      }}
+      className="overflow-hidden"
     >
       {/* Card header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
@@ -120,7 +127,14 @@ function LastRaceCard({ dur }) {
         <div className="flex items-center gap-3">
           <motion.button
             onClick={() => setShareOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#F59E0B]/60 text-[#F59E0B] font-['Space_Grotesk'] text-[10px] font-bold uppercase tracking-widest hover:bg-[#F59E0B] hover:text-black transition-all"
+            style={{
+              background: 'rgba(245, 158, 11, 0.08)',
+              border: '1px solid rgba(245, 158, 11, 0.5)',
+              borderRadius: 100,
+              padding: '6px 16px',
+              boxShadow: '0 4px 15px rgba(245, 158, 11, 0.1)',
+            }}
+            className="flex items-center gap-1.5 text-[#F59E0B] font-['Space_Grotesk'] text-[10px] font-bold uppercase tracking-widest hover:bg-[#F59E0B] hover:text-black transition-all"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -380,7 +394,14 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: dur(0.5) }}
-              className="md:col-span-2 lg:col-span-2 bg-[#1c1b1b] rounded-none p-8 flex flex-col justify-between min-h-[400px]"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+              }}
+              className="md:col-span-2 lg:col-span-2 p-8 flex flex-col justify-between min-h-[400px]"
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -420,7 +441,14 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.15, duration: dur(0.5) }}
-              className="md:col-span-2 lg:col-span-3 bg-[#1c1b1b] rounded-none p-8 flex flex-col"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+              }}
+              className="md:col-span-2 lg:col-span-3 p-8 flex flex-col"
             >
               <div className="flex justify-between items-center mb-8">
                 <h3 className="font-['Space_Grotesk'] text-sm font-bold text-white uppercase tracking-widest">
@@ -467,7 +495,14 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 + i * 0.15, duration: dur(0.4) }}
-                  className="bg-[#2a2a2a] p-6 flex flex-col justify-between h-[192px]"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 16,
+                  }}
+                  className="p-6 flex flex-col justify-between h-[192px]"
                 >
                    <span className="text-[10px] font-bold text-[#999999] uppercase tracking-widest">{card.label}</span>
                    <div className="text-4xl font-['Space_Grotesk'] font-bold text-white">{card.value}</div>
@@ -508,7 +543,17 @@ export default function Home() {
                   transition={{ delay: i * 0.15, duration: dur(0.5) }}
                   whileHover={{ y: -5, borderColor: 'rgba(225,6,0,0.4)', transition: { duration: 0.2 } }}
                 >
-                  <Link to={card.to} className="group block bg-[#1c1b1b] p-6 h-full border border-transparent hover:border-white/10">
+                  <Link
+                    to={card.to}
+                    className="group block p-6 h-full transition-all hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 16,
+                    }}
+                  >
                       <h3 className="text-xl font-['Space_Grotesk'] font-bold text-white mb-3 group-hover:text-[#e10600] transition-colors">{card.title}</h3>
                       <p className="text-[#e9bcb5] text-sm leading-relaxed mb-6">{card.desc}</p>
                       <span className="text-[#e10600] text-xs font-bold uppercase tracking-widest flex items-center gap-2">{card.cta} <ArrowRight size={14} /></span>

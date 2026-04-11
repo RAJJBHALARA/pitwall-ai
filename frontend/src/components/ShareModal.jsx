@@ -171,8 +171,13 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
         {/* Share on X */}
         <motion.button
           onClick={shareOnX}
-          className={`${isMobile ? 'w-full' : 'flex-1'} flex items-center justify-center gap-2 rounded-xl bg-[#1a1a1a] border border-white/10 font-['Space_Grotesk'] font-bold text-sm text-white tracking-wide uppercase hover:bg-[#222] transition-all`}
-          style={{ height: isMobile ? 52 : 44 }}
+          className={`${isMobile ? 'w-full' : 'flex-1'} flex items-center justify-center gap-2 font-['Space_Grotesk'] font-bold text-sm text-white tracking-wide uppercase hover:bg-white/[0.08] transition-all`}
+          style={{
+            height: isMobile ? 52 : 44,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 12,
+          }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
         >
@@ -200,11 +205,14 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
           {isMobile ? (
             /* ── Mobile: Bottom sheet ── */
             <motion.div
-              className="fixed bottom-0 left-0 right-0 z-[101] bg-[#111] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 z-[101] overflow-y-auto"
               style={{
                 maxHeight: '92vh',
                 borderRadius: '20px 20px 0 0',
                 boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
+                background: 'rgba(14, 14, 14, 0.95)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
               }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
@@ -227,8 +235,16 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
               exit={{ opacity: 0 }}
             >
               <motion.div
-                className="bg-[#111] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
-                style={{ width: '100%', maxWidth: 560 }}
+                style={{
+                  width: '100%',
+                  maxWidth: 560,
+                  background: 'rgba(14, 14, 14, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 20,
+                }}
+                className="overflow-hidden shadow-2xl"
                 initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.85, opacity: 0 }}

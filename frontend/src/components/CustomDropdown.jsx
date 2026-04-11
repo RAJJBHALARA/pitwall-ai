@@ -22,7 +22,14 @@ export default function CustomDropdown({ label, value, options, onChange }) {
       <div className="relative">
         <div 
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-[#1c1b1b] border border-[#5e3f3a]/20 rounded-lg px-4 py-3 flex items-center justify-between hover:bg-[#2a2a2a] transition-colors cursor-pointer group"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+          }}
+          className="px-4 py-3 flex items-center justify-between hover:bg-white/[0.06] transition-all cursor-pointer group"
         >
           <span className="font-['Space_Grotesk'] font-bold text-sm tracking-tight text-white">{value}</span>
           <motion.div
@@ -36,26 +43,43 @@ export default function CustomDropdown({ label, value, options, onChange }) {
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -8, scaleY: 0.95 }}
+              initial={{ opacity: 0, y: -8, scaleY: 0.9 }}
               animate={{ opacity: 1, y: 0, scaleY: 1 }}
-              exit={{ opacity: 0, y: -8, scaleY: 0.95 }}
-              transition={{ duration: 0.2 }}
-              style={{ transformOrigin: 'top' }}
-              className="absolute z-50 w-full mt-2 bg-[#1c1b1b] border border-[#5e3f3a]/20 rounded-lg shadow-xl overflow-hidden"
+              exit={{ opacity: 0, y: -8, scaleY: 0.9 }}
+              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+              style={{
+                transformOrigin: 'top',
+                background: 'rgba(20, 20, 20, 0.95)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12,
+              }}
+              className="absolute z-50 w-full mt-2 shadow-2xl overflow-hidden"
             >
               <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                {options.map((opt) => (
-                  <div
-                    key={opt}
-                    onClick={() => {
-                      onChange(opt);
-                      setIsOpen(false);
-                    }}
-                    className="px-4 py-3 text-sm font-['Space_Grotesk'] font-bold text-[#999999] hover:text-white hover:bg-[#e10600] transition-colors cursor-pointer"
-                  >
-                    {opt}
-                  </div>
-                ))}
+                {options.map((opt) => {
+                  const isActive = opt === value;
+                  return (
+                    <div
+                      key={opt}
+                      onClick={() => {
+                        onChange(opt);
+                        setIsOpen(false);
+                      }}
+                      style={{
+                        borderLeft: isActive ? '2px solid #E10600' : '2px solid transparent',
+                      }}
+                      className={`px-4 py-3 text-sm font-['Space_Grotesk'] font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? 'text-white bg-white/[0.05]'
+                          : 'text-[#999999] hover:text-white hover:bg-white/[0.05]'
+                      }`}
+                    >
+                      {opt}
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           )}

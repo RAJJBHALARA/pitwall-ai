@@ -7,6 +7,7 @@ import { getTeamColor, DRIVER_DATA, positionChangeLabel } from '../utils/teamCol
 import { getFlagUrl } from '../utils/flagHelper';
 import { useMode } from '../context/ModeContext';
 import ShareModal from '../components/ShareModal';
+import axios from 'axios';
 
 const SEASON_YEAR = 2026; // Current live season
 
@@ -185,6 +186,7 @@ export default function Standings() {
   const [error, setError] = useState(null);
   const [lastRound, setLastRound] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [lastRaceShare, setLastRaceShare] = useState(null);
   const { isBeginnerMode } = useMode();
 
   useEffect(() => {
@@ -206,6 +208,30 @@ export default function Standings() {
       }
     }
     fetchAll();
+
+    // Fetch last race podium for share card
+    async function fetchLastRace() {
+      try {
+        const res = await axios.get('https://api.jolpi.ca/ergast/f1/current/last/results.json');
+        const race = res.data?.MRData?.RaceTable?.Races?.[0];
+        if (race && race.Results?.length >= 3) {
+          const r = race.Results;
+          setLastRaceShare({
+            raceName: race.raceName.replace(' Grand Prix', ' GP'),
+            round: `Round ${race.round}`,
+            year: race.season,
+            p1: { code: r[0].Driver.code, name: `${r[0].Driver.givenName} ${r[0].Driver.familyName}`, team: r[0].Constructor.name, pts: `+${r[0].points}` },
+            p2: { code: r[1].Driver.code, name: `${r[1].Driver.givenName} ${r[1].Driver.familyName}`, team: r[1].Constructor.name, pts: `+${r[1].points}` },
+            p3: { code: r[2].Driver.code, name: `${r[2].Driver.givenName} ${r[2].Driver.familyName}`, team: r[2].Constructor.name, pts: `+${r[2].points}` },
+            fastestLap: {
+              driver: r.find(d => d.FastestLap?.rank === '1')?.Driver?.code || r[0].Driver.code,
+              time: r.find(d => d.FastestLap?.rank === '1')?.FastestLap?.Time?.time || '—',
+            },
+          });
+        }
+      } catch { /* silently fail — share button just won't show */ }
+    }
+    fetchLastRace();
   }, []);
 
   const current = activeTab === 'drivers' ? driverData : constructorData;
@@ -258,7 +284,14 @@ export default function Standings() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="flex gap-2 mb-8 bg-[#131313] rounded-xl p-1.5 border border-white/5 w-fit"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 12,
+            }}
+            className="flex gap-2 mb-8 p-1.5 w-fit"
           >
             {['drivers', 'constructors'].map(tab => (
               <button
@@ -394,19 +427,11 @@ export default function Standings() {
           </AnimatePresence>
         </div>
       </div>
-      {driverData && driverData.length >= 3 && (
+      {lastRaceShare && (
         <ShareModal
           isOpen={shareOpen}
           onClose={() => setShareOpen(false)}
-          raceData={{
-            raceName: `${SEASON_YEAR} Championship`,
-            round: `After Round ${lastRound ?? '?'}`,
-            year: String(SEASON_YEAR),
-            p1: { code: driverData[0]?.driverId?.toUpperCase()?.slice(0,3) || 'P1', name: `${driverData[0]?.givenName} ${driverData[0]?.familyName}`, team: driverData[0]?.constructorName, pts: `+${driverData[0]?.points}` },
-            p2: { code: driverData[1]?.driverId?.toUpperCase()?.slice(0,3) || 'P2', name: `${driverData[1]?.givenName} ${driverData[1]?.familyName}`, team: driverData[1]?.constructorName, pts: `+${driverData[1]?.points}` },
-            p3: { code: driverData[2]?.driverId?.toUpperCase()?.slice(0,3) || 'P3', name: `${driverData[2]?.givenName} ${driverData[2]?.familyName}`, team: driverData[2]?.constructorName, pts: `+${driverData[2]?.points}` },
-            fastestLap: { driver: 'Championship Leader', time: `${driverData[0]?.points} pts` },
-          }}
+          raceData={lastRaceShare}
         />
       )}
     </PageTransition>

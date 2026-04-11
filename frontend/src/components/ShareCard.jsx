@@ -75,14 +75,21 @@ function PodiumCol({ driver, isWinner, driverImage }) {
   const posAccent = pos === 1 ? '#FFD700' : pos === 2 ? '#C0C0C0' : '#CD7F32';
   const posLabel  = pos === 1 ? 'WINNER'  : `P${pos}`;
   const flex      = isWinner ? 1.5 : 1;
-  const nameSz    = isWinner ? 48 : 30;
-  const ptsSz     = isWinner ? 54 : 34;
+  const nameSz    = isWinner ? 44 : 28;
+  const ptsSz     = isWinner ? 50 : 32;
+  const cardBg    = isWinner ? '#161616' : '#121212';
+
+  // Content zone height is ~200px for winner, ~160px for sides
+  const contentH  = isWinner ? 200 : 160;
+  const imgH      = isWinner ? 420 : 280;
+  const imgBottom = isWinner ? contentH - 10 : contentH - 10;
+  const fadeBottom = contentH - 15;
 
   return (
     <div style={{
       flex,
       position: 'relative',
-      background: `linear-gradient(180deg, #1c1c1c 0%, #101010 100%)`,
+      background: `linear-gradient(180deg, ${cardBg} 0%, #0c0c0c 100%)`,
       borderTop: `3px solid ${posAccent}`,
       borderRadius: 6,
       margin: '8px 6px',
@@ -94,12 +101,12 @@ function PodiumCol({ driver, isWinner, driverImage }) {
       {/* ── Ghost position number (fills empty upper area) ── */}
       <div style={{
         position: 'absolute',
-        top: isWinner ? -50 : -30,
-        right: isWinner ? -20 : -10,
-        fontSize: isWinner ? 340 : 220,
+        top: isWinner ? -60 : -30,
+        right: isWinner ? -25 : -15,
+        fontSize: isWinner ? 380 : 240,
         fontWeight: 900,
         fontStyle: 'italic',
-        color: `${posAccent}${isWinner ? '0A' : '08'}`,
+        color: `${posAccent}${isWinner ? '0C' : '09'}`,
         lineHeight: 1,
         fontFamily: "'Space Grotesk', sans-serif",
         userSelect: 'none',
@@ -109,15 +116,15 @@ function PodiumCol({ driver, isWinner, driverImage }) {
       {/* ── Team colour splash ── */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0,
-        height: isWinner ? '55%' : '45%',
-        background: `linear-gradient(180deg, ${color}${isWinner ? '30' : '18'}, transparent)`,
+        height: isWinner ? '60%' : '50%',
+        background: `linear-gradient(180deg, ${color}${isWinner ? '35' : '20'}, transparent)`,
         zIndex: 0,
       }} />
 
       {/* ── Speed line pattern (fills upper area) ── */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0,
-        height: '60%',
+        height: '65%',
         backgroundImage: `repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(255,255,255,0.02) 8px, rgba(255,255,255,0.02) 9px)`,
         zIndex: 0,
       }} />
@@ -126,52 +133,73 @@ function PodiumCol({ driver, isWinner, driverImage }) {
       {isWinner && (
         <div style={{
           position: 'absolute', top: 28, right: 24,
-          width: 100, height: 100,
-          background: 'radial-gradient(circle, #FFD70035, transparent)',
+          width: 120, height: 120,
+          background: 'radial-gradient(circle, #FFD70040, transparent)',
           borderRadius: '50%', zIndex: 1,
         }} />
       )}
 
-      {/* ── Driver photo / fallback code ── */}
-      <div style={{
-        position: 'relative', zIndex: 1,
-        display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
-        height: isWinner ? 280 : 180,
-        overflow: 'hidden',
-      }}>
-        {driverImage ? (
+      {/* ── Driver photo (absolute, filling upper card) ── */}
+      {driverImage && (
+        <>
           <img
             src={driverImage}
             alt={driver.name}
             style={{
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'top center',
-              filter: 'saturate(0.8) contrast(1.1)',
-              mixBlendMode: 'luminosity',
-              opacity: 0.6,
+              position: 'absolute',
+              bottom: imgBottom,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              height: imgH,
+              width: 'auto',
+              objectFit: 'contain',
+              objectPosition: 'bottom center',
+              zIndex: 2,
+              filter: 'contrast(1.05) saturate(0.9)',
             }}
           />
-        ) : (
-          /* Fallback: large outlined driver code */
+          {/* Gradient fade so photo blends into text */}
           <div style={{
-            fontSize: isWinner ? 140 : 100,
+            position: 'absolute',
+            bottom: fadeBottom,
+            left: 0, right: 0,
+            height: 120,
+            background: `linear-gradient(transparent, ${cardBg})`,
+            zIndex: 3,
+          }} />
+        </>
+      )}
+
+      {/* ── Fallback: large outlined driver code when no photo ── */}
+      {!driverImage && (
+        <div style={{
+          position: 'absolute',
+          top: '15%', left: 0, right: 0,
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 2,
+        }}>
+          <div style={{
+            fontSize: isWinner ? 160 : 110,
             fontWeight: 900,
             fontStyle: 'italic',
             fontFamily: "'Space Grotesk', sans-serif",
             color: 'transparent',
             WebkitTextStroke: `2px ${color}`,
-            opacity: 0.5,
+            opacity: 0.6,
             lineHeight: 1,
             letterSpacing: '-0.04em',
             textAlign: 'center',
             userSelect: 'none',
           }}>{driver.code}</div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Content ── */}
-      <div style={{ position: 'relative', padding: '0 20px 20px', zIndex: 2 }}>
+      <div style={{
+        position: 'relative',
+        padding: isWinner ? '0 22px 22px' : '0 16px 16px',
+        zIndex: 4,
+      }}>
         {/* Position badge */}
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,

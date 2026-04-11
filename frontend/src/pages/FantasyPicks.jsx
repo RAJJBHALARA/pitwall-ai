@@ -195,7 +195,16 @@ export default function FantasyPicks() {
             transition={{ duration: dur(0.6) }}
             className="lg:col-span-4"
           >
-            <div className="bg-[#1c1b1b] p-8 rounded-2xl border border-white/5 relative overflow-hidden h-full">
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+              }}
+              className="p-8 relative overflow-hidden h-full"
+            >
               <div className="absolute top-0 right-0 p-4">
                 <Sparkles className="text-[#e10600]/20 w-12 h-12" />
               </div>
@@ -224,7 +233,13 @@ export default function FantasyPicks() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1 }}
-                    className="bg-[#2a2a2a] p-5 rounded-xl border-l-2 border-[#47efda]"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderLeft: '2px solid #47efda',
+                      borderRadius: 12,
+                    }}
+                    className="p-5"
                   >
                     <p className="text-[10px] font-bold text-[#47efda] uppercase tracking-widest mb-1">
                       {isBeginnerMode ? 'Best Team to Pick' : 'Top Constructor'}
@@ -240,7 +255,13 @@ export default function FantasyPicks() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.2 }}
-                    className="bg-[#2a2a2a] p-5 rounded-xl border-l-2 border-[#e10600]"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderLeft: '2px solid #e10600',
+                      borderRadius: 12,
+                    }}
+                    className="p-5"
                   >
                     <p className="text-[10px] font-bold text-[#e10600] uppercase tracking-widest mb-1 flex items-center gap-1">
                       <ShieldAlert size={12} /> {isBeginnerMode ? 'Skip These Drivers' : 'Drivers to Avoid'}
@@ -252,7 +273,8 @@ export default function FantasyPicks() {
 
               <motion.button 
                 whileHover={{ gap: '12px' }}
-                className="mt-12 w-full py-4 bg-[#e10600] text-white font-['Space_Grotesk'] font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(225,6,0,0.3)]"
+                className="mt-12 w-full py-4 bg-[#e10600] text-white font-['Space_Grotesk'] font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(225,6,0,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
+                style={{ borderRadius: 100 }}
               >
                 Assemble Auto-Lineup <Sparkles size={14} />
               </motion.button>
@@ -339,9 +361,19 @@ export default function FantasyPicks() {
                        key={driver.id}
                        variants={itemVariants}
                        whileHover={{ y: -8, boxShadow: '0 20px 40px -20px rgba(0,0,0,0.5)' }}
-                       className="group bg-[#1c1b1b] rounded-2xl overflow-hidden border border-white/5 hover:border-[#e10600]/30 transition-colors"
+                       style={{
+                         background: 'rgba(255,255,255,0.03)',
+                         backdropFilter: 'blur(12px)',
+                         WebkitBackdropFilter: 'blur(12px)',
+                         border: '1px solid rgba(255,255,255,0.08)',
+                         borderRadius: 16,
+                       }}
+                       className="group overflow-hidden hover:border-[#e10600]/30 transition-colors"
                      >
-                       <div className="relative h-48 bg-[#2a2a2a] overflow-hidden flex items-center justify-center">
+                       <div
+                         style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px 16px 0 0' }}
+                         className="relative h-48 overflow-hidden flex items-center justify-center"
+                       >
                           <DriverImage
                             code={driver.code}
                             name={driver.name}
@@ -403,7 +435,12 @@ export default function FantasyPicks() {
                              </div>
                              <motion.button 
                                whileTap={{ scale: 0.95 }}
-                               className="px-6 py-2 bg-[#2a2a2a] hover:bg-[#e10600] text-white text-[10px] font-bold uppercase tracking-widest transition-colors rounded-lg"
+                               className="px-6 py-2 text-white text-[10px] font-bold uppercase tracking-widest transition-all hover:bg-[#e10600] hover:scale-[1.02]"
+                               style={{
+                                 background: 'rgba(255,255,255,0.06)',
+                                 border: '1px solid rgba(255,255,255,0.12)',
+                                 borderRadius: 100,
+                               }}
                              >
                                ADD TO TEAM
                              </motion.button>

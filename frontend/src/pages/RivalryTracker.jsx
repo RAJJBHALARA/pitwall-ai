@@ -162,7 +162,12 @@ export default function RivalryTracker() {
             <motion.button 
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="w-12 h-12 flex items-center justify-center bg-[#1c1b1b] rounded-full text-[#e9bcb5] hover:text-white transition-colors border border-white/5"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '100px',
+              }}
+              className="w-12 h-12 flex items-center justify-center text-[#e9bcb5] hover:text-white transition-colors"
             >
               <Share2 className="w-5 h-5" />
             </motion.button>
@@ -299,7 +304,15 @@ export default function RivalryTracker() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: dur(0.5) }}
-          className="mt-16 p-8 rounded-2xl bg-[#1c1b1b] border-l-4 border-[#e10600] relative overflow-hidden shadow-xl"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderLeft: '4px solid #e10600',
+            borderRadius: 16,
+          }}
+          className="mt-16 p-8 relative overflow-hidden shadow-xl"
         >
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <Lightbulb className="w-32 h-32" />

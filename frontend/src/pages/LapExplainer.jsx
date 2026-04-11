@@ -137,7 +137,14 @@ export default function LapExplainer() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="lg:col-span-2 bg-[#1c1b1b] rounded-2xl p-8 border border-white/5 relative overflow-hidden flex flex-col items-center justify-center min-h-[450px]"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 16,
+            }}
+            className="lg:col-span-2 p-8 relative overflow-hidden flex flex-col items-center justify-center min-h-[450px]"
           >
             <div className="absolute top-6 left-6 flex items-center gap-2">
               <Map size={16} className="text-[#e10600]" />
@@ -206,7 +213,14 @@ export default function LapExplainer() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-[#1c1b1b] p-6 rounded-2xl border border-white/5 flex flex-col justify-between h-[120px]"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+              }}
+              className="p-6 flex flex-col justify-between h-[120px]"
             >
               <div className="flex justify-between items-start">
                 <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">
@@ -224,7 +238,14 @@ export default function LapExplainer() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-[#1c1b1b] p-6 rounded-2xl border border-white/5 flex flex-col justify-between h-[120px]"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+              }}
+              className="p-6 flex flex-col justify-between h-[120px]"
             >
               <div className="flex justify-between items-start">
                 <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">
@@ -248,7 +269,14 @@ export default function LapExplainer() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-[#1c1b1b] p-6 rounded-2xl border border-white/5 flex flex-col justify-between h-[120px]"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+              }}
+              className="p-6 flex flex-col justify-between h-[120px]"
             >
               <div className="flex justify-between items-start">
                 <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">
@@ -280,7 +308,14 @@ export default function LapExplainer() {
              initial={{ opacity: 0, y: 30 }}
              whileInView={{ opacity: 1, y: 0 }}
              viewport={{ once: true }}
-             className="bg-[#2a2a2a]/50 p-8 rounded-2xl border border-white/5 flex items-start gap-4"
+             style={{
+               background: 'rgba(255,255,255,0.03)',
+               backdropFilter: 'blur(12px)',
+               WebkitBackdropFilter: 'blur(12px)',
+               border: '1px solid rgba(255,255,255,0.08)',
+               borderRadius: 16,
+             }}
+             className="p-8 flex items-start gap-4"
            >
               <div className="bg-[#e10600]/10 p-4 rounded-xl">
                  <Info className="text-[#e10600]" size={24} />
@@ -298,7 +333,14 @@ export default function LapExplainer() {
            <motion.div 
              variants={shakeVariants}
              animate={telemetry?.sector_deltas && (telemetry.sector_deltas.s1 + telemetry.sector_deltas.s2 + telemetry.sector_deltas.s3) > 0 ? "shake" : ""}
-             className="bg-[#1c1b1b] p-8 rounded-2xl border border-[#e10600]/20 flex flex-col justify-center relative overflow-hidden"
+             style={{
+               background: 'rgba(255,255,255,0.03)',
+               backdropFilter: 'blur(12px)',
+               WebkitBackdropFilter: 'blur(12px)',
+               border: '1px solid rgba(225,6,0,0.15)',
+               borderRadius: 16,
+             }}
+             className="p-8 flex flex-col justify-center relative overflow-hidden"
            >
               {loading && (
                 <div className="absolute inset-0 z-10 bg-[#1c1b1b]/50 backdrop-blur-[2px]" />

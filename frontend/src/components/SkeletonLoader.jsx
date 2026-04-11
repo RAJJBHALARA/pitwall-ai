@@ -12,7 +12,14 @@ export default function SkeletonLoader({ type = 'default', className = '' }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className={`bg-[#1c1b1b] rounded-2xl overflow-hidden border border-white/5 ${className}`}
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 16,
+        }}
+        className={`overflow-hidden ${className}`}
       >
         <div className="h-48 bg-gradient-to-r from-[#1a1a1a] via-[#2a2a2a] to-[#1a1a1a]" style={shimmerStyle} />
         <div className="p-6 space-y-3">
