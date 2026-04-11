@@ -1,12 +1,16 @@
 import { Outlet } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import Navbar from './Navbar';
 import MobileBottomNav from './MobileBottomNav';
+import BeginnerBanner from './BeginnerBanner';
+import WelcomeTutorial from './WelcomeTutorial';
+import SpotlightTour from './SpotlightTour';
 
 export default function Layout() {
   const [showSlowWarning, setShowSlowWarning] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
 
   useEffect(() => {
     const handleSlow = (e) => setShowSlowWarning(e.detail);
@@ -14,9 +18,37 @@ export default function Layout() {
     return () => window.removeEventListener('slow-api', handleSlow);
   }, []);
 
+  // Ctrl+Shift+T — reset tutorial for testing
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+        e.preventDefault();
+        localStorage.removeItem('tutorial_seen');
+        window.location.reload();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleStartTour = useCallback(() => {
+    setTourActive(true);
+  }, []);
+
+  const handleTourComplete = useCallback(() => {
+    setTourActive(false);
+  }, []);
+
+  const handleSkip = useCallback(() => {
+    // tutorial_seen is already set by WelcomeTutorial
+  }, []);
+
   return (
     <div className="dark min-h-screen bg-[#0e0e0e] text-[#e5e2e1] font-['Inter']">
       <Navbar />
+      <div className="fixed top-20 w-full z-40">
+        <BeginnerBanner />
+      </div>
       <AnimatePresence>
         {showSlowWarning && (
           <motion.div 
@@ -41,6 +73,10 @@ export default function Layout() {
         <Outlet />
       </main>
       <MobileBottomNav />
+
+      {/* Tutorial system */}
+      <WelcomeTutorial onStartTour={handleStartTour} onSkip={handleSkip} />
+      <SpotlightTour active={tourActive} onComplete={handleTourComplete} />
     </div>
   );
 }

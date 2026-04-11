@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, Activity, TrendingUp, Timer, AlertCircle } from 'lucide-react';
+import { ArrowRight, Activity, TrendingUp, Timer, AlertCircle, HelpCircle } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAnimatedCounter } from '../utils/useAnimatedCounter';
 import CustomDropdown from '../components/CustomDropdown';
@@ -10,6 +10,7 @@ import { DRIVER_DATA } from '../utils/teamColors';
 import { getFlagUrl } from '../utils/flagHelper';
 import CircuitInfo from '../components/CircuitInfo';
 import { getCircuitInfo } from '../utils/circuitData';
+import { useMode } from '../context/ModeContext';
 
 export default function RaceAnalysis() {
   const shouldReduceMotion = useReducedMotion();
@@ -33,6 +34,7 @@ export default function RaceAnalysis() {
   
   const circuitData = getCircuitInfo(gp);
   const [aiInsight, setAiInsight] = useState(null);
+  const { isBeginnerMode } = useMode();
 
   useEffect(() => {
     let active = true;
@@ -181,8 +183,15 @@ export default function RaceAnalysis() {
         >
           <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
             <div>
-              <h2 className="font-['Space_Grotesk'] font-bold text-xl tracking-[-0.02em] uppercase text-white">LAP TIME EVOLUTION</h2>
-              <p className="text-sm text-[#e9bcb5] mt-1">Comparison between leaders (Lap 1 - 78)</p>
+              <h2 className="font-['Space_Grotesk'] font-bold text-xl tracking-[-0.02em] uppercase text-white">
+                {isBeginnerMode ? 'WHO WAS FASTEST?' : 'LAP TIME EVOLUTION'}
+              </h2>
+              <p className="text-sm text-[#e9bcb5] mt-1">
+                {isBeginnerMode
+                  ? 'Each line shows one driver. Lower = faster lap time.'
+                  : 'Comparison between leaders (Lap 1 - 78)'
+                }
+              </p>
             </div>
             <div className="flex gap-6">
               <div className="flex items-center gap-2">
@@ -249,7 +258,14 @@ export default function RaceAnalysis() {
           className="bg-[#1c1b1b] rounded-xl overflow-hidden border border-white/5 shadow-lg"
         >
           <div className="p-6">
-            <h2 className="font-['Space_Grotesk'] font-bold text-xl tracking-[-0.02em] uppercase text-white">TIRE STRATEGY</h2>
+            <h2 className="font-['Space_Grotesk'] font-bold text-xl tracking-[-0.02em] uppercase text-white">
+              {isBeginnerMode ? 'WHEN DID DRIVERS CHANGE TIRES?' : 'TIRE STRATEGY'}
+            </h2>
+            {isBeginnerMode && (
+              <p className="text-sm text-[#e9bcb5] mt-2">
+                Each coloured bar represents a different tire type. Drivers change tires during pit stops to go faster.
+              </p>
+            )}
             <div className="mt-8 space-y-8">
               {loading ? (
                 <div className="space-y-4 animate-pulse">
@@ -302,15 +318,17 @@ export default function RaceAnalysis() {
               })}
             </div>
             
-            <div className="mt-10 pt-6 border-t border-white/5 flex justify-center gap-8">
+            <div className="mt-10 pt-6 border-t border-white/5 flex justify-center gap-8 flex-wrap">
               {[
-                { color: 'bg-red-600', label: 'Soft' },
-                { color: 'bg-yellow-400', label: 'Medium' },
-                { color: 'bg-white border border-[#353534]', label: 'Hard' },
+                { color: 'bg-red-600', label: 'Soft', emoji: '🔴', explain: 'Fastest but wears out quickly' },
+                { color: 'bg-yellow-400', label: 'Medium', emoji: '🟡', explain: 'Good balance of speed & life' },
+                { color: 'bg-white border border-[#353534]', label: 'Hard', emoji: '⚪', explain: 'Slowest but lasts the longest' },
               ].map(t => (
                 <div key={t.label} className="flex items-center gap-2">
                   <div className={`w-4 h-4 rounded-full ${t.color}`}></div>
-                  <span className="text-xs font-['Space_Grotesk'] font-bold uppercase text-[#e9bcb5]">{t.label}</span>
+                  <span className="text-xs font-['Space_Grotesk'] font-bold uppercase text-[#e9bcb5]">
+                    {isBeginnerMode ? `${t.emoji} ${t.label} = ${t.explain}` : t.label}
+                  </span>
                 </div>
               ))}
             </div>
@@ -329,7 +347,15 @@ export default function RaceAnalysis() {
           >
             <Activity className="text-[#e10600] mb-4" size={28} />
             <div>
-              <div className="text-xs font-['Space_Grotesk'] font-bold text-[#e9bcb5] uppercase tracking-wider mb-2">Top Speed</div>
+              <div className="text-xs font-['Space_Grotesk'] font-bold text-[#e9bcb5] uppercase tracking-wider mb-2">
+                {isBeginnerMode ? 'Fastest Speed' : 'Top Speed'}
+                {isBeginnerMode && (
+                  <span className="relative ml-1.5 group inline-block">
+                    <HelpCircle size={12} className="text-[#666] inline cursor-help" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#2a2a2a] text-[#e9bcb5] text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">The fastest speed any car reached on a straight</span>
+                  </span>
+                )}
+              </div>
               <div className="text-4xl font-['Space_Grotesk'] font-bold text-white">{topSpeed}<span className="text-lg font-medium ml-1 text-[#e9bcb5]">km/h</span></div>
             </div>
           </motion.div>
@@ -343,7 +369,15 @@ export default function RaceAnalysis() {
           >
             <Timer className="text-[#47efda] mb-4" size={28} />
             <div>
-              <div className="text-xs font-['Space_Grotesk'] font-bold text-[#e9bcb5] uppercase tracking-wider mb-2">Avg. Pit Stop</div>
+              <div className="text-xs font-['Space_Grotesk'] font-bold text-[#e9bcb5] uppercase tracking-wider mb-2">
+                {isBeginnerMode ? 'Tire Change Time' : 'Avg. Pit Stop'}
+                {isBeginnerMode && (
+                  <span className="relative ml-1.5 group inline-block">
+                    <HelpCircle size={12} className="text-[#666] inline cursor-help" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#2a2a2a] text-[#e9bcb5] text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">How long it takes to change all 4 tires in a pit stop</span>
+                  </span>
+                )}
+              </div>
               <div className="text-4xl font-['Space_Grotesk'] font-bold text-white">{pitStop}<span className="text-lg font-medium ml-1 text-[#e9bcb5]">s</span></div>
             </div>
           </motion.div>
@@ -356,7 +390,9 @@ export default function RaceAnalysis() {
             className="col-span-1 md:col-span-2 lg:col-span-1 bg-[#1c1b1b] p-8 rounded-xl border border-white/5 flex items-center justify-between h-48"
           >
             <div>
-              <div className="text-xs font-['Space_Grotesk'] font-bold text-[#e9bcb5] uppercase tracking-wider mb-2">Win Probability</div>
+              <div className="text-xs font-['Space_Grotesk'] font-bold text-[#e9bcb5] uppercase tracking-wider mb-2">
+                {isBeginnerMode ? 'Chance of Winning' : 'Win Probability'}
+              </div>
               <div className="text-5xl font-['Space_Grotesk'] font-bold text-[#e10600]">{winProb}%</div>
             </div>
             <motion.div

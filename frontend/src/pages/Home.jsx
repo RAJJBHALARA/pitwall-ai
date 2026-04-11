@@ -9,6 +9,7 @@ import { getDrivers } from '../services/api';
 import { getTeamColor, DRIVER_DATA } from '../utils/teamColors';
 import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
+import { useMode } from '../context/ModeContext';
 
 // ── Last Race Summary Card ──────────────────────────────────────────────────
 const LAST_RACE = {
@@ -122,7 +123,10 @@ export default function Home() {
 
   const trackTemp = useAnimatedCounter(42.8, 1.5, 0.6, true);
   const { countdowns, activeWeekend } = useRaceCountdown();
-  const heroWords = ['THE', 'KINETIC'];
+  const { isBeginnerMode } = useMode();
+
+  const heroWords = isBeginnerMode ? ['YOUR', 'F1'] : ['THE', 'KINETIC'];
+  const heroAccent = isBeginnerMode ? 'HEADQUARTERS 🏎️' : 'OBSERVATORY';
 
   const [leader, setLeader] = useState({ name: 'Max Verstappen', code: 'VER', team: 'Red Bull Racing' });
   const [loading, setLoading] = useState(true);
@@ -180,7 +184,7 @@ export default function Home() {
                   transition={{ delay: 0.3, duration: dur(0.6), ease: [0.22, 1, 0.36, 1] }}
                   className="text-[#e10600]"
                 >
-                  OBSERVATORY
+                  {heroAccent}
                 </motion.span>
               </h1>
               <motion.p
@@ -189,7 +193,10 @@ export default function Home() {
                 transition={{ delay: 0.6, duration: dur(0.8) }}
                 className="mt-6 text-[#e9bcb5] max-w-md text-lg leading-relaxed"
               >
-                Harnessing real-time telemetry from the paddock. Precision analytics engineered for the high-performance spectator.
+                {isBeginnerMode
+                  ? "New to F1? We explain everything in simple terms. No jargon, no confusion — just the thrill of racing."
+                  : "Harnessing real-time telemetry from the paddock. Precision analytics engineered for the high-performance spectator."
+                }
               </motion.p>
             </div>
             <motion.div
@@ -393,11 +400,18 @@ export default function Home() {
               className="md:col-span-2 lg:col-span-3 bg-[#1c1b1b] rounded-none p-8 flex flex-col"
             >
               <div className="flex justify-between items-center mb-8">
-                <h3 className="font-['Space_Grotesk'] text-sm font-bold text-white uppercase tracking-widest">Live Sector Delta</h3>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-[#01d2be]/10 text-[#47efda] text-[10px] font-bold rounded-full">SECTOR 1: -0.042</span>
-                  <span className="px-3 py-1 bg-[#01d2be]/10 text-[#47efda] text-[10px] font-bold rounded-full">SECTOR 2: -0.118</span>
-                </div>
+                <h3 className="font-['Space_Grotesk'] text-sm font-bold text-white uppercase tracking-widest">
+                  {isBeginnerMode ? 'Speed Comparison' : 'Live Sector Delta'}
+                </h3>
+                {!isBeginnerMode && (
+                  <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-[#01d2be]/10 text-[#47efda] text-[10px] font-bold rounded-full">SECTOR 1: -0.042</span>
+                    <span className="px-3 py-1 bg-[#01d2be]/10 text-[#47efda] text-[10px] font-bold rounded-full">SECTOR 2: -0.118</span>
+                  </div>
+                )}
+                {isBeginnerMode && (
+                  <span className="text-[11px] text-[#999] font-['Inter']">Each bar shows how fast the car was going in different parts of the track</span>
+                )}
               </div>
               <div className="flex-1 flex items-end gap-2 h-full">
                  {[75, 50, 90, 60, 85, 66].map((h, i) => (
@@ -459,9 +473,9 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
-                { to: '/race-analysis', title: 'Race Analysis', desc: 'Historical lap times, tire strategies, and race event data visualizations.', cta: 'Explore' },
-                { to: '/rivalry-tracker', title: 'Rivalry Tracker', desc: 'Head-to-head comparison between drivers including qualifying gaps and race results.', cta: 'Compare' },
-                { to: '/fantasy-picks', title: 'AI Fantasy Picks', desc: 'Claude 3.5 Sonnet-powered recommendations for your fantasy Formula 1 lineup.', cta: 'Predict' },
+                { to: '/race-analysis', title: isBeginnerMode ? 'Who Won & How?' : 'Race Analysis', desc: isBeginnerMode ? 'See which drivers were fastest and how the race unfolded lap by lap. Easy charts anyone can read!' : 'Historical lap times, tire strategies, and race event data visualizations.', cta: 'Explore' },
+                { to: '/rivalry-tracker', title: isBeginnerMode ? 'Driver vs Driver' : 'Rivalry Tracker', desc: isBeginnerMode ? 'Pick any two drivers and see who\'s been better this season. Think of it like a scoreboard!' : 'Head-to-head comparison between drivers including qualifying gaps and race results.', cta: 'Compare' },
+                { to: '/fantasy-picks', title: isBeginnerMode ? 'AI Dream Team' : 'AI Fantasy Picks', desc: isBeginnerMode ? 'Our AI picks the best drivers for your fantasy team. Like a cheat code for fantasy F1!' : 'Claude 3.5 Sonnet-powered recommendations for your fantasy Formula 1 lineup.', cta: 'Predict' },
               ].map((card, i) => (
                 <motion.div
                   key={card.to}

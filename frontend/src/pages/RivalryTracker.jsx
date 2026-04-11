@@ -9,6 +9,7 @@ import { getRivalryStats, getDrivers } from '../services/api';
 import { DRIVER_DATA } from '../utils/teamColors';
 import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
+import { useMode } from '../context/ModeContext';
 
 const TEAM_GRADIENTS = {
   'Mercedes':          'linear-gradient(180deg, #27F4D2 0%, #0a0a0a 60%)',
@@ -35,6 +36,7 @@ export default function RivalryTracker() {
   const shouldReduceMotion = useReducedMotion();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => (shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d);
+  const { isBeginnerMode } = useMode();
 
   const [season, setSeason] = useState('2026');
   const [driver1, setDriver1] = useState('HAM');
@@ -107,6 +109,13 @@ export default function RivalryTracker() {
     return [`${Math.round((a / total) * 100)}%`, `${Math.round((b / total) * 100)}%`];
   };
 
+  const BEGINNER_LABELS = {
+    'Qualifying': 'Who Starts Ahead?',
+    'Race Wins': 'Who Won More Races?',
+    'Avg. Pace Gap': 'Speed Difference',
+    'Championship Points': 'Total Score',
+  };
+
   const stats = [
     { label: 'Qualifying', v1: qualy1, v2: qualy2, p1: calcPercent(q1, q2)[0], p2: calcPercent(q1, q2)[1] },
     { label: 'Race Wins', v1: wins1, v2: wins2, p1: calcPercent(w1, w2)[0], p2: calcPercent(w1, w2)[1] },
@@ -126,9 +135,14 @@ export default function RivalryTracker() {
             animate={{ opacity: 1, x: 0 }}
             className="font-['Space_Grotesk'] font-bold tracking-[-0.02em] uppercase text-3xl text-white"
           >
-            <span className="text-[#e10600] italic mr-3">RIVALRY</span>
-            HUB
+            <span className="text-[#e10600] italic mr-3">
+              {isBeginnerMode ? 'DRIVER' : 'RIVALRY'}
+            </span>
+            {isBeginnerMode ? 'SHOWDOWN' : 'HUB'}
           </motion.h1>
+          {isBeginnerMode && (
+            <p className="text-sm text-[#999] font-['Inter'] mt-1">Pick two drivers and see who's been better this season 🏆</p>
+          )}
         </div>
 
         {/* Year + Driver Selectors */}
@@ -234,7 +248,7 @@ export default function RivalryTracker() {
             className="font-['Space_Grotesk'] font-black text-xl text-[#e9bcb5] tracking-widest uppercase mb-8 flex items-center gap-4"
           >
             <span className="h-px flex-1 bg-[#5e3f3a]/50"></span>
-            Head-to-Head Data
+            {isBeginnerMode ? 'The Scorecard' : 'Head-to-Head Data'}
             <span className="h-px flex-1 bg-[#5e3f3a]/50"></span>
           </motion.h2>
 
@@ -252,7 +266,9 @@ export default function RivalryTracker() {
               <div key={stat.label} className="space-y-4">
                 <div className="flex justify-between items-end px-2">
                   <span className={`font-['Space_Grotesk'] font-bold text-3xl ${stat.isSpecial ? 'text-[#47efda]' : 'text-white'}`}>{stat.v1}</span>
-                  <span className="font-['Space_Grotesk'] font-bold text-xs text-[#e9bcb5] tracking-[0.2em] uppercase pb-1">{stat.label}</span>
+                  <span className="font-['Space_Grotesk'] font-bold text-xs text-[#e9bcb5] tracking-[0.2em] uppercase pb-1">
+                    {isBeginnerMode ? (BEGINNER_LABELS[stat.label] || stat.label) : stat.label}
+                  </span>
                   <span className="font-['Space_Grotesk'] font-bold text-3xl text-white">{stat.v2}</span>
                 </div>
                 <div className="flex h-2 w-full bg-[#353534] rounded-full overflow-hidden gap-1 shadow-inner">

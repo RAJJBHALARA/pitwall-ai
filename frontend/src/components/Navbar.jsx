@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Gauge, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModeToggle from './ModeToggle';
 
 export default function Navbar() {
   const location = useLocation();
@@ -19,12 +20,12 @@ export default function Navbar() {
   }, [mobileMenuOpen]);
 
   const links = [
-    { name: 'Home', path: '/' },
-    { name: 'Race Analysis', path: '/race-analysis' },
-    { name: 'Rivalry Tracker', path: '/rivalry-tracker' },
-    { name: 'Fantasy Picks', path: '/fantasy-picks' },
-    { name: 'Standings', path: '/standings' },
-    { name: 'Lap Explainer', path: '/lap-explainer' },
+    { name: 'Home', path: '/', navId: 'home' },
+    { name: 'Race Analysis', path: '/race-analysis', navId: 'race-analysis' },
+    { name: 'Rivalry Tracker', path: '/rivalry-tracker', navId: 'rivalry-tracker' },
+    { name: 'Fantasy Picks', path: '/fantasy-picks', navId: 'fantasy-picks' },
+    { name: 'Standings', path: '/standings', navId: 'standings' },
+    { name: 'Lap Explainer', path: '/lap-explainer', navId: 'lap-explainer' },
   ];
 
   return (
@@ -55,6 +56,7 @@ export default function Navbar() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1, duration: 0.3 }}
                 whileHover={{ y: -2 }}
+                data-nav={link.navId}
               >
                 <Link
                   to={link.path}
@@ -72,6 +74,11 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Mode Toggle — Desktop */}
+          <div className="hidden md:block" data-nav="mode-toggle">
+            <ModeToggle />
+          </div>
+
           <motion.button 
             animate={{ 
               boxShadow: [
@@ -167,10 +174,20 @@ export default function Navbar() {
                 </motion.div>
               );
             })}
+            {/* Mode Toggle — Mobile */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="mt-2"
+            >
+              <ModeToggle compact />
+            </motion.div>
+
             <motion.button 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.45 }}
               className="mt-4 bg-[#e10600] text-white px-8 py-3 rounded-xl font-['Space_Grotesk'] font-bold uppercase tracking-wider"
               onClick={() => {
                 setMobileMenuOpen(false);

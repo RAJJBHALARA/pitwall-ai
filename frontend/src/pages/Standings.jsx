@@ -5,6 +5,7 @@ import PageTransition from '../components/PageTransition';
 import { getDriverStandings, getConstructorStandings } from '../services/api';
 import { getTeamColor, DRIVER_DATA, positionChangeLabel } from '../utils/teamColors';
 import { getFlagUrl } from '../utils/flagHelper';
+import { useMode } from '../context/ModeContext';
 
 const SEASON_YEAR = 2026; // Current live season
 
@@ -182,6 +183,7 @@ export default function Standings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastRound, setLastRound] = useState(null);
+  const { isBeginnerMode } = useMode();
 
   useEffect(() => {
     async function fetchAll() {
@@ -228,8 +230,11 @@ export default function Standings() {
               </span>
             </div>
             <h1 className="font-['Space_Grotesk'] font-black text-4xl md:text-5xl text-white tracking-tight">
-              Championship <span className="text-[#e10600]">Standings</span>
+              {isBeginnerMode ? 'Who\'s ' : 'Championship '}<span className="text-[#e10600]">{isBeginnerMode ? 'Winning? 🏆' : 'Standings'}</span>
             </h1>
+            {isBeginnerMode && (
+              <p className="text-sm text-[#999] font-['Inter'] mt-2">The leaderboard for {SEASON_YEAR} — higher points = better season</p>
+            )}
           </motion.div>
 
           {/* Tab Switcher */}
@@ -255,7 +260,10 @@ export default function Standings() {
                   />
                 )}
                 <span className="relative z-10">
-                  {tab === 'drivers' ? '🏎  Drivers' : '🏭  Constructors'}
+                  {tab === 'drivers'
+                    ? (isBeginnerMode ? '🏁  Drivers' : '🏎  Drivers')
+                    : (isBeginnerMode ? '🏢  Teams' : '🏭  Constructors')
+                  }
                 </span>
               </button>
             ))}
@@ -337,10 +345,14 @@ export default function Standings() {
                       <span className="font-['Space_Grotesk'] text-[9px] text-[#444] uppercase tracking-widest">Gap</span>
                     </div>
                     <div className="w-14 text-right">
-                      <span className="font-['Space_Grotesk'] text-[9px] text-[#444] uppercase tracking-widest">PTS</span>
+                      <span className="font-['Space_Grotesk'] text-[9px] text-[#444] uppercase tracking-widest">
+                        {isBeginnerMode ? 'Score' : 'PTS'}
+                      </span>
                     </div>
                     <div className="w-8 text-right hidden md:block">
-                      <span className="font-['Space_Grotesk'] text-[9px] text-[#444] uppercase tracking-widest">W</span>
+                      <span className="font-['Space_Grotesk'] text-[9px] text-[#444] uppercase tracking-widest">
+                        {isBeginnerMode ? 'Wins' : 'W'}
+                      </span>
                     </div>
                   </div>
 

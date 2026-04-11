@@ -10,11 +10,13 @@ import { getFantasyPicks, getAvailableRaces, getCurrentForm } from '../services/
 import { DRIVER_DATA } from '../utils/teamColors';
 import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
+import { useMode } from '../context/ModeContext';
 
 export default function FantasyPicks() {
   const shouldReduceMotion = useReducedMotion();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => (shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d);
+  const { isBeginnerMode } = useMode();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -160,9 +162,11 @@ export default function FantasyPicks() {
             animate={{ opacity: 1, scale: 1 }}
             className="font-['Space_Grotesk'] font-bold tracking-tight text-white mb-2 text-4xl"
           >
-            FANTASY <span className="text-[#e10600]">STRATEGIST</span>
+            {isBeginnerMode ? 'AI DREAM' : 'FANTASY'} <span className="text-[#e10600]">{isBeginnerMode ? 'TEAM ✨' : 'STRATEGIST'}</span>
           </motion.h1>
-          <p className="text-[#e9bcb5] uppercase tracking-[0.2em] font-bold text-xs">AI-Optimized Selection Engine</p>
+          <p className="text-[#e9bcb5] uppercase tracking-[0.2em] font-bold text-xs">
+            {isBeginnerMode ? 'Our AI picks the best drivers for you — just sit back!' : 'AI-Optimized Selection Engine'}
+          </p>
         </header>
 
         {/* Race selector */}
@@ -198,7 +202,7 @@ export default function FantasyPicks() {
               
               <h2 className="font-['Space_Grotesk'] font-bold text-sm tracking-widest text-white uppercase mb-6 flex items-center gap-2">
                 <Trophy size={16} className="text-[#e10600]" />
-                Strategy Brief
+                {isBeginnerMode ? 'Why These Picks?' : 'Strategy Brief'}
               </h2>
 
               {isLoading ? (
@@ -222,7 +226,9 @@ export default function FantasyPicks() {
                     transition={{ delay: 1 }}
                     className="bg-[#2a2a2a] p-5 rounded-xl border-l-2 border-[#47efda]"
                   >
-                    <p className="text-[10px] font-bold text-[#47efda] uppercase tracking-widest mb-1">Top Constructor</p>
+                    <p className="text-[10px] font-bold text-[#47efda] uppercase tracking-widest mb-1">
+                      {isBeginnerMode ? 'Best Team to Pick' : 'Top Constructor'}
+                    </p>
                     <p className="text-white font-['Space_Grotesk'] font-bold">{constructor.name}</p>
                     <p className="text-xs text-[#e9bcb5] mt-1">{constructor.reasoning}</p>
                   </motion.div>
@@ -237,7 +243,7 @@ export default function FantasyPicks() {
                     className="bg-[#2a2a2a] p-5 rounded-xl border-l-2 border-[#e10600]"
                   >
                     <p className="text-[10px] font-bold text-[#e10600] uppercase tracking-widest mb-1 flex items-center gap-1">
-                      <ShieldAlert size={12} /> Drivers to Avoid
+                      <ShieldAlert size={12} /> {isBeginnerMode ? 'Skip These Drivers' : 'Drivers to Avoid'}
                     </p>
                     <p className="text-white font-['Space_Grotesk'] font-bold">{driversToAvoid.join(', ')}</p>
                   </motion.div>
@@ -362,7 +368,12 @@ export default function FantasyPicks() {
                           <p className="text-xs text-[#e9bcb5] font-bold uppercase tracking-tighter opacity-60 mb-3">{driver.team}</p>
                           
                           {driver.reasoning && (
-                            <p className="text-xs text-[#999] leading-relaxed mb-4 line-clamp-2">{driver.reasoning}</p>
+                            <div className="mb-4">
+                              {isBeginnerMode && (
+                                <p className="text-[10px] text-[#F59E0B] font-bold uppercase tracking-widest mb-1">💡 Why pick them?</p>
+                              )}
+                              <p className="text-xs text-[#999] leading-relaxed line-clamp-2">{driver.reasoning}</p>
+                            </div>
                           )}
                           
                           {currentForm[driver.code] && currentForm[driver.code].length > 0 && (
@@ -385,7 +396,9 @@ export default function FantasyPicks() {
 
                           <div className="flex justify-between items-center pt-4 border-t border-white/5">
                              <div>
-                               <p className="text-[10px] text-[#999999] uppercase tracking-widest mb-1">Price</p>
+                               <p className="text-[10px] text-[#999999] uppercase tracking-widest mb-1">
+                                 {isBeginnerMode ? 'Cost' : 'Price'}
+                               </p>
                                <p className="font-['Space_Grotesk'] font-extrabold text-[#47efda]">{driver.price}</p>
                              </div>
                              <motion.button 

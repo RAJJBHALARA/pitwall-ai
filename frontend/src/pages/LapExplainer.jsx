@@ -8,11 +8,13 @@ import PageTransition from '../components/PageTransition';
 import CustomDropdown from '../components/CustomDropdown';
 import { getAvailableRaces, getDrivers, getTelemetry } from '../services/api';
 import { getCircuitInfo } from '../utils/circuitData';
+import { useMode } from '../context/ModeContext';
 
 export default function LapExplainer() {
   const shouldReduceMotion = useReducedMotion();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => (shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d);
+  const { isBeginnerMode } = useMode();
 
   const [isPlaying, setIsPlaying] = useState(false);
   
@@ -108,9 +110,11 @@ export default function LapExplainer() {
               animate={{ opacity: 1, x: 0 }}
               className="font-['Space_Grotesk'] font-bold tracking-[-0.02em] text-white text-3xl"
             >
-              LAP <span className="text-[#e10600]">EXPLAINER</span>
+              LAP <span className="text-[#e10600]">{isBeginnerMode ? 'BREAKDOWN' : 'EXPLAINER'}</span>
             </motion.h1>
-            <p className="text-[#e9bcb5] text-sm mt-2 opacity-60">AI-Powered Telemetry Breakdown</p>
+            <p className="text-[#e9bcb5] text-sm mt-2 opacity-60">
+              {isBeginnerMode ? 'See exactly what a driver did on any lap — speed, time, and AI analysis' : 'AI-Powered Telemetry Breakdown'}
+            </p>
           </div>
           
           <div className="flex flex-wrap gap-4">
@@ -205,7 +209,9 @@ export default function LapExplainer() {
               className="bg-[#1c1b1b] p-6 rounded-2xl border border-white/5 flex flex-col justify-between h-[120px]"
             >
               <div className="flex justify-between items-start">
-                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">LAP TIME (REL)</span>
+                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">
+                {isBeginnerMode ? 'LAP TIME' : 'LAP TIME (REL)'}
+              </span>
                 <Timer size={14} className="text-[#47efda]" />
               </div>
               <div className="text-3xl font-['Space_Grotesk'] font-bold text-white">
@@ -221,7 +227,9 @@ export default function LapExplainer() {
               className="bg-[#1c1b1b] p-6 rounded-2xl border border-white/5 flex flex-col justify-between h-[120px]"
             >
               <div className="flex justify-between items-start">
-                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">TELEMETRY SPEEDS</span>
+                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">
+                {isBeginnerMode ? 'HOW FAST?' : 'TELEMETRY SPEEDS'}
+              </span>
                 <Zap size={14} className="text-[#e10600]" />
               </div>
               <div className="flex items-end justify-between">
@@ -243,7 +251,9 @@ export default function LapExplainer() {
               className="bg-[#1c1b1b] p-6 rounded-2xl border border-white/5 flex flex-col justify-between h-[120px]"
             >
               <div className="flex justify-between items-start">
-                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">SECTOR SPLITS</span>
+                <span className="text-[10px] text-[#999999] font-bold uppercase tracking-widest">
+                {isBeginnerMode ? 'TIME PER SECTION' : 'SECTOR SPLITS'}
+              </span>
                 <Gauge size={14} className="text-[#e10600]" />
               </div>
               <div className="flex justify-between items-end mt-2">
@@ -276,7 +286,9 @@ export default function LapExplainer() {
                  <Info className="text-[#e10600]" size={24} />
               </div>
               <div>
-                 <h3 className="text-xs font-bold text-[#e10600] uppercase tracking-[0.2em] mb-4">Telemetric Verdict</h3>
+                 <h3 className="text-xs font-bold text-[#e10600] uppercase tracking-[0.2em] mb-4">
+                   {isBeginnerMode ? 'What Happened This Lap?' : 'Telemetric Verdict'}
+                 </h3>
                  <p className="text-[#e5e2e1] text-lg leading-relaxed font-['Inter']">
                    {displayedAnalysis}
                  </p>
@@ -294,14 +306,19 @@ export default function LapExplainer() {
               <div className="flex items-center gap-3 mb-4">
                  <div className={`w-3 h-3 rounded-full animate-pulse ${deltaStr.startsWith('-') ? 'bg-[#47efda]' : 'bg-[#e10600]'}`}></div>
                  <h3 className="text-xs font-bold text-white uppercase tracking-widest">
-                   {deltaStr.startsWith('-') ? 'Performance Gain Detected' : 'Performance Loss Detected'}
+                   {isBeginnerMode
+                     ? (deltaStr.startsWith('-') ? 'Faster Than Best! 🚀' : 'Slower Than Best ⌛')
+                     : (deltaStr.startsWith('-') ? 'Performance Gain Detected' : 'Performance Loss Detected')
+                   }
                  </h3>
               </div>
               <div className="flex justify-between items-baseline">
                  <p className={`text-5xl font-['Space_Grotesk'] font-extrabold tracking-tighter ${deltaStr.startsWith('-') ? 'text-[#47efda]' : 'text-[#e10600]'}`}>
                    {deltaStr || "--"}
                  </p>
-                 <p className="text-xs text-[#999999] uppercase font-bold">VS FASTEST LAP</p>
+                 <p className="text-xs text-[#999999] uppercase font-bold">
+                   {isBeginnerMode ? 'compared to fastest' : 'VS FASTEST LAP'}
+                 </p>
               </div>
               <p className="text-xs text-[#e9bcb5] mt-4 leading-relaxed">
                 {telemetry ? `Analysis of lap ${lap} complete.` : 'Waiting for telemetry data...'}
