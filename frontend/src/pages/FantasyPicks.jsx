@@ -20,7 +20,7 @@ export default function FantasyPicks() {
   const [error, setError] = useState(null);
   const { containerVariants, itemVariants } = useStaggerChildren(0.1, 0.05);
 
-  const [season, setSeason] = useState('2025');
+  const [season, setSeason] = useState('2026');
   const [selectedRace, setSelectedRace] = useState('');
   const [raceList, setRaceList] = useState([]);
 
@@ -168,7 +168,7 @@ export default function FantasyPicks() {
         {/* Race selector */}
         <div className="flex flex-wrap gap-4 mb-10">
           <div className="w-28">
-            <CustomDropdown label="Season" value={season} options={['2025', '2024', '2023']} onChange={setSeason} />
+            <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023']} onChange={setSeason} />
           </div>
           <div className="w-64">
             <CustomDropdown label="Grand Prix" value={selectedRace} options={raceList} onChange={setSelectedRace} />
@@ -368,7 +368,7 @@ export default function FantasyPicks() {
                           {currentForm[driver.code] && currentForm[driver.code].length > 0 && (
                             <div className="mb-4 flex flex-col gap-1.5">
                               <span className="text-[10px] text-[#999] uppercase tracking-widest flex items-center gap-1">
-                                Recent Form {formSource === 'OpenF1 2025' ? '(2025 OpenF1)' : ''}
+                                Recent Form {formSource === 'OpenF1 2026' ? '(2026 OpenF1)' : formSource === 'OpenF1 2025' ? '(2025 OpenF1)' : ''}
                               </span>
                               <div className="flex gap-2">
                                 {currentForm[driver.code].map((f, i) => (

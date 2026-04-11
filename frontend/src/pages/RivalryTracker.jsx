@@ -36,7 +36,7 @@ export default function RivalryTracker() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => (shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d);
 
-  const [season, setSeason] = useState('2024');
+  const [season, setSeason] = useState('2026');
   const [driver1, setDriver1] = useState('HAM');
   const [driver2, setDriver2] = useState('RUS');
   const [driverList, setDriverList] = useState([]);
@@ -135,7 +135,7 @@ export default function RivalryTracker() {
         <div className="flex flex-wrap justify-between items-center mb-8 gap-4">
           <div className="flex gap-4 flex-wrap">
             <div className="w-28">
-              <CustomDropdown label="Season" value={season} options={['2024', '2023']} onChange={setSeason} />
+              <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023']} onChange={setSeason} />
             </div>
             <div className="w-28">
               <CustomDropdown label="Driver 1" value={driver1} options={driverOptions.filter(d => d !== driver2)} onChange={setDriver1} />

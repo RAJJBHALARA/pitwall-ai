@@ -6,7 +6,7 @@ import { getDriverStandings, getConstructorStandings } from '../services/api';
 import { getTeamColor, DRIVER_DATA, positionChangeLabel } from '../utils/teamColors';
 import { getFlagUrl } from '../utils/flagHelper';
 
-const SEASON_YEAR = 2025; // Last complete data season from Jolpica
+const SEASON_YEAR = 2026; // Current live season
 
 // Podium medal colours
 const MEDAL = {
@@ -224,7 +224,7 @@ export default function Standings() {
             <div className="flex items-center gap-3 mb-2">
               <Trophy size={22} className="text-[#e10600]" />
               <span className="font-['Space_Grotesk'] text-[11px] font-bold tracking-[0.25em] text-[#666] uppercase">
-                2025 Season · After Round {lastRound ?? '…'}
+                2026 Season · After Round {lastRound ?? '…'}
               </span>
             </div>
             <h1 className="font-['Space_Grotesk'] font-black text-4xl md:text-5xl text-white tracking-tight">
@@ -358,7 +358,7 @@ export default function Standings() {
                 {/* Footer note */}
                 <div className="mt-4 text-center">
                   <p className="text-[#444] text-[10px] font-['Space_Grotesk'] uppercase tracking-widest">
-                    Data from Jolpica API · 2025 Season · Updates post-race
+                    Data from Jolpica API · 2026 Season · Updates post-race
                   </p>
                 </div>
               </motion.div>

@@ -192,52 +192,58 @@ def _collect_form_data() -> dict:
     return form_data
 
 async def get_current_form_data() -> dict:
-    """Helper to fetch 2025 form data from OpenF1, fallback to 2024 FastF1."""
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            sess_resp = await client.get("https://api.openf1.org/v1/sessions?year=2025")
-            sess_resp.raise_for_status()
-            sessions = sess_resp.json()
-            
-            completed_races = [s for s in sessions if s.get("session_type") == "Race" and s.get("session_key")]
-            if not completed_races:
-                raise Exception("No completed 2025 races found in OpenF1")
+    """Helper to fetch current season form data from OpenF1 (2026 → 2025 fallback → FastF1 2024)."""
+    for year in [2026, 2025]:
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                sess_resp = await client.get(f"https://api.openf1.org/v1/sessions?year={year}")
+                sess_resp.raise_for_status()
+                sessions = sess_resp.json()
                 
-            last_3 = sorted(completed_races, key=lambda x: x["date_start"], reverse=True)[:3]
-            
-            form_data = {}
-            drivers_resp = await client.get(f"https://api.openf1.org/v1/drivers?session_key={last_3[0]['session_key']}")
-            drivers_resp.raise_for_status()
-            drivers = drivers_resp.json()
-            
-            driver_codes = {str(d["driver_number"]): d.get("name_acronym", "UNK") for d in drivers}
-            
-            for s in last_3:
-                pos_resp = await client.get(f"https://api.openf1.org/v1/position?session_key={s['session_key']}")
-                pos_resp.raise_for_status()
-                pos_data = pos_resp.json()
+                completed_races = [s for s in sessions if s.get("session_type") == "Race" and s.get("session_key")]
+                if not completed_races:
+                    print(f"[OpenF1] No completed {year} races found, trying next year...")
+                    continue
+                    
+                last_3 = sorted(completed_races, key=lambda x: x["date_start"], reverse=True)[:3]
                 
-                final_pos = {}
-                for p in pos_data:
-                    drv_num = str(p.get("driver_number"))
-                    final_pos[drv_num] = p.get("position")
+                form_data = {}
+                drivers_resp = await client.get(f"https://api.openf1.org/v1/drivers?session_key={last_3[0]['session_key']}")
+                drivers_resp.raise_for_status()
+                drivers = drivers_resp.json()
                 
-                for drv_num, pos in final_pos.items():
-                    code = driver_codes.get(drv_num, "UNK")
-                    if code not in form_data:
-                        form_data[code] = []
-                    form_data[code].append({
-                        "race": s.get("location", "Unknown GP"),
-                        "position": pos,
-                        "points": 0
-                    })
-            
-            return {"form_data": form_data, "source": "OpenF1 2025"}
-            
-    except Exception as e:
-        print(f"[OpenF1 Error] {e}, falling back to FastF1 2024")
-        form_data = await asyncio.to_thread(_collect_form_data)
-        return {"form_data": form_data, "source": "FastF1 2024"}
+                driver_codes = {str(d["driver_number"]): d.get("name_acronym", "UNK") for d in drivers}
+                
+                for s in last_3:
+                    pos_resp = await client.get(f"https://api.openf1.org/v1/position?session_key={s['session_key']}")
+                    pos_resp.raise_for_status()
+                    pos_data = pos_resp.json()
+                    
+                    final_pos = {}
+                    for p in pos_data:
+                        drv_num = str(p.get("driver_number"))
+                        final_pos[drv_num] = p.get("position")
+                    
+                    for drv_num, pos in final_pos.items():
+                        code = driver_codes.get(drv_num, "UNK")
+                        if code not in form_data:
+                            form_data[code] = []
+                        form_data[code].append({
+                            "race": s.get("location", "Unknown GP"),
+                            "position": pos,
+                            "points": 0
+                        })
+                
+                print(f"[OpenF1] Successfully loaded {year} form data ({len(last_3)} races)")
+                return {"form_data": form_data, "source": f"OpenF1 {year}"}
+                
+        except Exception as e:
+            print(f"[OpenF1 {year} Error] {e}")
+    
+    # Final fallback: FastF1 2024 cached data
+    print("[Form Data] Falling back to FastF1 2024")
+    form_data = await asyncio.to_thread(_collect_form_data)
+    return {"form_data": form_data, "source": "FastF1 2024"}
 
 @app.get("/api/current-form", dependencies=[Depends(verify_api_key)])
 @limiter.limit("10/minute")

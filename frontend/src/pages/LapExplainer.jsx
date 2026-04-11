@@ -16,7 +16,7 @@ export default function LapExplainer() {
 
   const [isPlaying, setIsPlaying] = useState(false);
   
-  const [year, setYear] = useState('2024');
+  const [year, setYear] = useState('2026');
   const [gp, setGp] = useState('Abu Dhabi Grand Prix');
   const [driver, setDriver] = useState('VER');
   const [lap, setLap] = useState('15');
@@ -114,7 +114,7 @@ export default function LapExplainer() {
           </div>
           
           <div className="flex flex-wrap gap-4">
-            <CustomDropdown label="Season" value={year} options={['2024', '2023']} onChange={setYear} />
+            <CustomDropdown label="Season" value={year} options={['2026', '2025', '2024', '2023']} onChange={setYear} />
             <CustomDropdown label="Grand Prix" value={gp} options={options.races} onChange={setGp} />
             <CustomDropdown label="Driver" value={driver} options={options.drivers.map(d => d.code)} onChange={setDriver} />
             <CustomDropdown label="Lap" value={lap} options={lapOptions} onChange={setLap} />

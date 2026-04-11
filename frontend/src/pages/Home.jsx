@@ -132,7 +132,7 @@ export default function Home() {
     const fetchLeader = async () => {
       try {
         setLoading(true);
-        const res = await getDrivers(2024);
+        const res = await getDrivers(2026);
         if (res.data.drivers && res.data.drivers.length > 0) {
           setLeader(res.data.drivers[0]);
         }

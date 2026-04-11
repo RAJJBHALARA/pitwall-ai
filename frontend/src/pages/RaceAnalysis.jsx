@@ -16,7 +16,7 @@ export default function RaceAnalysis() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d;
 
-  const [season, setSeason] = useState('2024');
+  const [season, setSeason] = useState('2026');
   const [gp, setGp] = useState('AUSTRALIAN GP');
   const [session, setSession] = useState('RACE');
 
@@ -150,7 +150,7 @@ export default function RaceAnalysis() {
           transition={{ delay: 0.1, duration: dur(0.4) }}
           className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-white/5 pb-8"
         >
-          <CustomDropdown label="Season" value={season} options={['2024', '2023']} onChange={setSeason} />
+          <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023']} onChange={setSeason} />
           <CustomDropdown label="Grand Prix" value={gp} options={races} onChange={setGp} />
           <CustomDropdown label="Session" value={session} options={['RACE', 'QUALIFYING', 'SPRINT']} onChange={setSession} />
         </motion.section>
