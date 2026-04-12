@@ -1,5 +1,3 @@
----
-
 <div align="center">
 
 # 🏎️ BoxBox
@@ -18,8 +16,6 @@ AI analysis, fantasy picks, and driver career comparisons
 [![Gemini](https://img.shields.io/badge/AI-Gemini_1.5_Pro-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev)
 
 <br/>
-
-![BoxBox Dashboard Preview](./screenshots/home.png)
 
 </div>
 
@@ -128,28 +124,6 @@ Toggle between Expert and Beginner mode:
 - Shows live banner: "RACE WEEKEND ACTIVE — FP1 IN PROGRESS"
 - Countdown timer to next session
 - Email signup for race preview notifications
-
----
-
-## 📸 Screenshots
-
-| Home | Race Analysis |
-|------|--------------|
-| ![Home](./screenshots/home.png) | ![Race](./screenshots/race-analysis.png) |
-
-| Career Timeline | Rivalry Tracker |
-|----------------|----------------|
-| ![Career](./screenshots/career.png) | ![Rivalry](./screenshots/rivalry.png) |
-
-| Fantasy Picks | Standings |
-|--------------|-----------|
-| ![Fantasy](./screenshots/fantasy.png) | ![Standings](./screenshots/standings.png) |
-
-| Share Card | Lap Explainer |
-|-----------|--------------|
-| ![Share](./screenshots/share-card.png) | ![Lap](./screenshots/lap-explainer.png) |
-
----
 
 ## 🛠️ Tech Stack
 
