@@ -48,7 +48,7 @@ export default function FantasyPicks() {
       `Drivers: ${driverLine}\n` +
       `Constructor: ${teamLine}\n` +
       `Powered by @BoxBoxApp\n` +
-      `boxbox.vercel.app\n` +
+      `box-box-raj.vercel.app\n` +
       `#F1 #F1Fantasy #Formula1`
     );
   }
@@ -69,7 +69,7 @@ export default function FantasyPicks() {
       `My BoxBox picks for ${selectedRace || 'the next race'} 🏎️\n` +
       `Drivers: ${driverLine}\n` +
       `Constructor: ${teamLine}\n` +
-      `Powered by @BoxBoxApp | boxbox.vercel.app\n` +
+      `Powered by @BoxBoxApp | box-box-raj.vercel.app\n` +
       `#F1 #F1Fantasy #Formula1`;
     navigator.clipboard.writeText(text).then(() => {
       setShareState('copied');

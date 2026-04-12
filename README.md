@@ -2,7 +2,7 @@
 
 > **AI-powered Formula 1 race analysis, rivalry tracking, fantasy picks, driver career timelines, and live telemetry — all in one dark-themed dashboard.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-boxbox-E10600?style=for-the-badge&logo=vercel)](https://pitwall-ai-seven.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-boxbox-E10600?style=for-the-badge&logo=vercel)](https://box-box-raj.vercel.app)
 [![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render)](https://pitwall-ai-q77t.onrender.com/api/health)
 
 ---
