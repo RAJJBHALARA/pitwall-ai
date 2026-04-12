@@ -5,6 +5,7 @@ import { AlertCircle } from 'lucide-react';
 import Navbar from './Navbar';
 import MobileBottomNav from './MobileBottomNav';
 import BeginnerBanner from './BeginnerBanner';
+import RaceWeekendBanner from './RaceWeekendBanner';
 import WelcomeTutorial from './WelcomeTutorial';
 import SpotlightTour from './SpotlightTour';
 
@@ -47,6 +48,7 @@ export default function Layout() {
     <div className="dark min-h-screen bg-[#0e0e0e] text-[#e5e2e1] font-['Inter']">
       <Navbar />
       <div className="fixed top-20 w-full z-40">
+        <RaceWeekendBanner />
         <BeginnerBanner />
       </div>
       <AnimatePresence>

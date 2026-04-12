@@ -11,6 +11,7 @@ import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
 import { useMode } from '../context/ModeContext';
 import ShareModal from '../components/ShareModal';
+import EmailSignup from '../components/EmailSignup';
 
 // ── Last Race Summary Card ──────────────────────────────────────────────────
 const LAST_RACE = {
@@ -519,6 +520,11 @@ export default function Home() {
         {/* Last Race Summary Card */}
         <section className="max-w-screen-2xl mx-auto px-8 py-10">
           <LastRaceCard dur={dur} />
+        </section>
+
+        {/* Email Signup Section */}
+        <section style={{ paddingTop: 40, paddingBottom: 20 }}>
+          <EmailSignup />
         </section>
 
         {/* Highlights Section */}
