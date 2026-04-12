@@ -55,6 +55,16 @@ export const fetchCurrentForm = async () => {
   return response.data;
 };
 
+export const fetchCareerStats = async (driverId) => {
+  const response = await api.get(`/api/career?driver=${driverId}`, { timeout: 120000 });
+  return response.data;
+};
+
+export const fetchCareerComparison = async (driver1Id, driver2Id) => {
+  const response = await api.post('/api/career-compare', { driver1_id: driver1Id, driver2_id: driver2Id }, { timeout: 120000 });
+  return response.data;
+};
+
 // Add interceptor to include API Key
 api.interceptors.request.use(config => {
   config.headers['X-API-Key'] = 'fallback_dev_key'; // Default local dev key

@@ -1,32 +1,32 @@
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Activity, Trophy, Timer } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Home, BarChart2, Swords, Trophy } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function MobileBottomNav() {
   const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setIsVisible(false); // Hide on scroll down
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setIsVisible(false);
       } else {
-        setIsVisible(true); // Show on scroll up
+        setIsVisible(true);
       }
-      setLastScrollY(currentScrollY);
+      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+  }, []);
 
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
-    { label: 'Analysis', path: '/race-analysis', icon: Activity },
-    { label: 'Fantasy', path: '/fantasy-picks', icon: Trophy },
-    { label: 'Laps', path: '/lap-explainer', icon: Timer },
+    { label: 'Race', path: '/race-analysis', icon: BarChart2 },
+    { label: 'Rival', path: '/rivalry-tracker', icon: Swords },
+    { label: 'Career', path: '/career', icon: Trophy },
   ];
 
   return (
@@ -52,7 +52,7 @@ export default function MobileBottomNav() {
             {/* Subtle top glare */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
 
-            {navItems.map((item, i) => (
+            {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
@@ -64,23 +64,18 @@ export default function MobileBottomNav() {
               >
                 {({ isActive }) => (
                   <>
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: i * 0.05, type: 'spring' }}
-                      className="relative z-10"
-                    >
+                    <div className="relative z-10">
                       <item.icon
                         size={22}
                         className={`mb-1 transition-colors ${
-                          isActive && item.label === 'Fantasy'
-                            ? 'text-[#47efda]'
+                          isActive && item.label === 'Career'
+                            ? 'text-[#fcd362]'
                             : isActive
                             ? 'text-[#e10600]'
                             : ''
                         }`}
                       />
-                    </motion.div>
+                    </div>
                     
                     <span className="text-[9px] font-['Space_Grotesk'] font-bold uppercase tracking-widest relative z-10">
                       {item.label}
@@ -91,8 +86,8 @@ export default function MobileBottomNav() {
                       <motion.div
                         layoutId="mobileNavIndicator"
                         className={`absolute inset-0 rounded-xl opacity-20 border ${
-                          item.label === 'Fantasy'
-                            ? 'bg-[#01d2be] border-[#01d2be]'
+                          item.label === 'Career'
+                            ? 'bg-[#fcd362] border-[#fcd362]'
                             : 'bg-[#e10600] border-[#e10600]'
                         }`}
                         initial={false}

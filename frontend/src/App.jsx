@@ -8,6 +8,7 @@ import RivalryTracker from './pages/RivalryTracker';
 import FantasyPicks from './pages/FantasyPicks';
 import LapExplainer from './pages/LapExplainer';
 import Standings from './pages/Standings';
+import DriverCareer from './pages/DriverCareer';
 
 function App() {
   const location = useLocation();
@@ -26,6 +27,7 @@ function App() {
           <Route path="fantasy-picks" element={<FantasyPicks />} />
           <Route path="lap-explainer" element={<LapExplainer />} />
           <Route path="standings" element={<Standings />} />
+          <Route path="career" element={<DriverCareer />} />
         </Route>
       </Routes>
     </AnimatePresence>

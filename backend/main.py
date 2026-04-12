@@ -17,9 +17,10 @@ from f1_data import (
     get_tire_strategy,
     get_rivalry_stats,
     get_recent_form,
-    get_lap_telemetry
+    get_lap_telemetry,
+    get_career_stats
 )
-from ai_advisor import get_fantasy_picks, explain_lap, get_rivalry_analysis, get_circuit_insight
+from ai_advisor import get_fantasy_picks, explain_lap, get_rivalry_analysis, get_circuit_insight, get_career_comparison
 
 load_dotenv()
 
@@ -71,6 +72,10 @@ async def startup_event():
 class FantasyPicksReq(BaseModel):
     race: str
     year: int
+
+class CareerCompareReq(BaseModel):
+    driver1_id: str
+    driver2_id: str
 
 # --- API Endpoints ---
 
@@ -315,3 +320,42 @@ async def fetch_constructor_standings(request: Request, year: int = 2025):
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch constructor standings: {str(e)}")
+
+
+# --- Career Timeline Endpoint ---
+
+@app.get("/api/career", dependencies=[Depends(verify_api_key)])
+@limiter.limit("10/minute")
+async def fetch_career_stats(request: Request, driver: str):
+    """Fetch complete career stats for a driver from Jolpica Ergast API."""
+    if not driver:
+        raise HTTPException(status_code=400, detail="Missing 'driver' query parameter.")
+    try:
+        data = await asyncio.to_thread(get_career_stats, driver)
+        if not data:
+            raise HTTPException(status_code=404, detail=f"No career data found for driver: {driver}")
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Career data fetch failed: {str(e)}")
+
+
+@app.post("/api/career-compare", dependencies=[Depends(verify_api_key)])
+@limiter.limit("10/minute")
+async def fetch_career_compare(request: Request, req: CareerCompareReq):
+    """Compare two drivers' careers with AI-powered verdict."""
+    try:
+        stats1 = await asyncio.to_thread(get_career_stats, req.driver1_id)
+        stats2 = await asyncio.to_thread(get_career_stats, req.driver2_id)
+        if not stats1 or not stats2:
+            raise HTTPException(status_code=404, detail="Career data not found for one or both drivers.")
+        d1_name = f"{stats1['driver_info']['givenName']} {stats1['driver_info']['familyName']}"
+        d2_name = f"{stats2['driver_info']['givenName']} {stats2['driver_info']['familyName']}"
+        verdict = await asyncio.to_thread(get_career_comparison, d1_name, d2_name, stats1, stats2)
+        return {"verdict": verdict}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Career comparison failed: {str(e)}")
+

@@ -158,3 +158,49 @@ def get_circuit_insight(circuit: str) -> str:
     except Exception as e:
         print(f"[Gemini Circuit Insight Error] {e}")
         return "Tactical data stream interrupted. Awaiting telemetry refresh."
+
+
+def get_career_comparison(driver1_name: str, driver2_name: str, stats1: dict, stats2: dict) -> str:
+    """Generate an AI-powered career comparison verdict between two F1 drivers."""
+    prompt = f"""Compare these two F1 drivers' careers:
+
+{driver1_name}:
+Championships: {stats1['totals']['championships']}
+Wins: {stats1['totals']['wins']}
+Podiums: {stats1['totals']['podiums']}
+Poles: {stats1['totals'].get('poles', 0)}
+Win Rate: {stats1['totals'].get('win_rate', 0)}%
+Seasons: {stats1['totals']['seasons_count']}
+
+{driver2_name}:
+Championships: {stats2['totals']['championships']}
+Wins: {stats2['totals']['wins']}
+Podiums: {stats2['totals']['podiums']}
+Poles: {stats2['totals'].get('poles', 0)}
+Win Rate: {stats2['totals'].get('win_rate', 0)}%
+Seasons: {stats2['totals']['seasons_count']}
+
+Write exactly 2 sentences.
+Sentence 1: Who leads statistically and by how much, citing specific numbers.
+Sentence 2: Bold verdict on legacy.
+Be direct and opinionated.
+Perfect English only. No jargon.
+Start with a driver name, not 'The' or 'While'.
+Plain text only. No markdown or formatting."""
+
+    try:
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        if len(text) < 20:
+            raise ValueError("Response too short")
+        return text
+    except Exception as e:
+        print(f"[Career Compare Error] {e}")
+        # Return a real analytical fallback, not a generic error
+        c1 = stats1['totals']['championships']
+        c2 = stats2['totals']['championships']
+        w1 = stats1['totals']['wins']
+        w2 = stats2['totals']['wins']
+        champ_winner = driver1_name if c1 > c2 else driver2_name
+        win_winner = driver1_name if w1 > w2 else driver2_name
+        return f"{champ_winner} leads on championships ({max(c1,c2)} vs {min(c1,c2)}) while {win_winner} has the edge in race wins ({max(w1,w2)} vs {min(w1,w2)}). Both represent generational talents whose legacies will be debated for decades."

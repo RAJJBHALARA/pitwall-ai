@@ -25,6 +25,7 @@ export default function Navbar() {
     { name: 'Rivalry Tracker', path: '/rivalry-tracker', navId: 'rivalry-tracker' },
     { name: 'Fantasy Picks', path: '/fantasy-picks', navId: 'fantasy-picks' },
     { name: 'Standings', path: '/standings', navId: 'standings' },
+    { name: 'Career', path: '/career', navId: 'career' },
     { name: 'Lap Explainer', path: '/lap-explainer', navId: 'lap-explainer' },
   ];
 

@@ -368,3 +368,244 @@ def get_lap_telemetry(year: int, race: str, driver: str, lap_number: int) -> dic
     except Exception as e:
         print(f"[FastF1 Error] get_lap_telemetry: {e}")
         return {}
+
+
+# ── Career Stats (Jolpica API) ────────────────────────────────────────────────
+
+import requests as sync_requests
+
+career_cache: Dict[str, Any] = {}
+
+def get_career_stats(driver_id: str) -> dict:
+    """Fetch complete career stats for a driver from Jolpica Ergast API."""
+    # Check cache
+    if driver_id in career_cache:
+        print(f"[Career] Returning cached data for {driver_id}")
+        return career_cache[driver_id]
+
+    try:
+        base = "https://api.jolpi.ca/ergast/f1"
+        print(f"[Career] Fetching data for {driver_id}...")
+
+        # Get all race results with pagination (API returns max 100 per call)
+        races = []
+        offset = 0
+        page_limit = 100
+        while True:
+            results_resp = sync_requests.get(
+                f"{base}/drivers/{driver_id}/results.json?limit={page_limit}&offset={offset}",
+                timeout=30
+            )
+            results_resp.raise_for_status()
+            results_data = results_resp.json()
+            page_races = results_data.get('MRData', {}).get('RaceTable', {}).get('Races', [])
+            total = int(results_data.get('MRData', {}).get('total', '0'))
+            races.extend(page_races)
+            offset += page_limit
+            if offset >= total or not page_races:
+                break
+            time.sleep(0.15)  # Be nice to API
+
+        print(f"[Career] Fetched {len(races)} races for {driver_id}")
+
+        if not races:
+            print(f"[Career] No race data found for {driver_id}")
+            return {}
+
+        # Get driver info from first race
+        first_result = races[0]['Results'][0]
+        driver_info = {
+            'driverId': first_result['Driver']['driverId'],
+            'givenName': first_result['Driver'].get('givenName', ''),
+            'familyName': first_result['Driver'].get('familyName', ''),
+            'nationality': first_result['Driver'].get('nationality', ''),
+            'permanentNumber': first_result['Driver'].get('permanentNumber', ''),
+            'code': first_result['Driver'].get('code', driver_id[:3].upper()),
+        }
+
+        # Process by season
+        seasons = {}
+        total_fastest_laps = 0
+
+        for race in races:
+            year = race['season']
+            if year not in seasons:
+                seasons[year] = {
+                    'wins': 0,
+                    'podiums': 0,
+                    'points': 0.0,
+                    'races': 0,
+                    'team': '',
+                    'teamId': '',
+                    'championship_pos': None,
+                    'fastest_laps': 0,
+                    'dnfs': 0,
+                    'best_finish': 99,
+                    'results': [],  # position per race for mini chart
+                }
+
+            result = race['Results'][0]
+            pos_str = result.get('position', '99')
+            pos = int(pos_str) if pos_str.isdigit() else 99
+            status = result.get('status', 'Finished')
+            pts = float(result.get('points', 0))
+
+            seasons[year]['races'] += 1
+            seasons[year]['points'] += pts
+            seasons[year]['team'] = result['Constructor']['name']
+            seasons[year]['teamId'] = result['Constructor']['constructorId']
+
+            if pos == 1:
+                seasons[year]['wins'] += 1
+            if pos <= 3:
+                seasons[year]['podiums'] += 1
+            if pos < seasons[year]['best_finish']:
+                seasons[year]['best_finish'] = pos
+
+            # Check fastest lap
+            if result.get('FastestLap', {}).get('rank') == '1':
+                seasons[year]['fastest_laps'] += 1
+                total_fastest_laps += 1
+
+            # Check DNF
+            if status not in ['Finished', '+1 Lap', '+2 Laps', '+3 Laps'] and not status.startswith('+'):
+                seasons[year]['dnfs'] += 1
+
+            # Store result for mini chart (race position)
+            seasons[year]['results'].append({
+                'round': race.get('round', ''),
+                'raceName': race.get('raceName', ''),
+                'position': pos,
+                'points': pts,
+            })
+
+        # Fetch championship positions per year (batch)
+        sorted_years = sorted(seasons.keys())
+        for year in sorted_years:
+            try:
+                standing_resp = sync_requests.get(
+                    f"{base}/{year}/drivers/{driver_id}/driverStandings.json",
+                    timeout=15
+                )
+                if standing_resp.status_code == 200:
+                    standing_data = standing_resp.json()
+                    lists = standing_data.get('MRData', {}).get('StandingsTable', {}).get('StandingsLists', [])
+                    if lists and lists[0].get('DriverStandings'):
+                        pos = lists[0]['DriverStandings'][0].get('position', '99')
+                        seasons[year]['championship_pos'] = int(pos)
+                        # Also get total points from standings (more accurate)
+                        standing_pts = lists[0]['DriverStandings'][0].get('points', None)
+                        if standing_pts:
+                            seasons[year]['points'] = float(standing_pts)
+            except Exception as e:
+                print(f"[Career] Standing fetch failed for {driver_id}/{year}: {e}")
+
+            # Small delay to be respectful to API
+            time.sleep(0.1)
+
+        # Build team history
+        team_history = []
+        current_team = None
+        for year in sorted_years:
+            team = seasons[year]['team']
+            team_id = seasons[year]['teamId']
+            if current_team and current_team['team'] == team:
+                current_team['endYear'] = year
+            else:
+                if current_team:
+                    team_history.append(current_team)
+                current_team = {
+                    'team': team,
+                    'teamId': team_id,
+                    'startYear': year,
+                    'endYear': year,
+                }
+        if current_team:
+            team_history.append(current_team)
+
+        # Calculate totals
+        all_seasons = list(seasons.values())
+        total_races = sum(s['races'] for s in all_seasons)
+        total_wins = sum(s['wins'] for s in all_seasons)
+        total_podiums = sum(s['podiums'] for s in all_seasons)
+        total_points = sum(s['points'] for s in all_seasons)
+        championships = sum(1 for s in all_seasons if s['championship_pos'] == 1)
+
+        # Find peak season (most wins, then most points)
+        peak_year = max(sorted_years, key=lambda y: (seasons[y]['wins'], seasons[y]['points']))
+
+        # Poles — try to get from qualifying
+        total_poles = 0
+        try:
+            quali_races = []
+            q_offset = 0
+            while True:
+                quali_resp = sync_requests.get(
+                    f"{base}/drivers/{driver_id}/qualifying.json?limit=100&offset={q_offset}",
+                    timeout=30
+                )
+                if quali_resp.status_code != 200:
+                    break
+                quali_data = quali_resp.json()
+                q_page = quali_data.get('MRData', {}).get('RaceTable', {}).get('Races', [])
+                q_total = int(quali_data.get('MRData', {}).get('total', '0'))
+                quali_races.extend(q_page)
+                q_offset += 100
+                if q_offset >= q_total or not q_page:
+                    break
+                time.sleep(0.15)
+
+            for qr in quali_races:
+                if qr.get('QualifyingResults'):
+                    if qr['QualifyingResults'][0].get('position') == '1':
+                        total_poles += 1
+            print(f"[Career] Poles counted: {total_poles} from {len(quali_races)} qualifying sessions")
+        except Exception as e:
+            print(f"[Career] Qualifying fetch failed for {driver_id}: {e}")
+
+        # Clean up results from seasons dict for JSON response (remove heavy data)
+        seasons_clean = {}
+        for year, data in seasons.items():
+            seasons_clean[year] = {
+                'wins': data['wins'],
+                'podiums': data['podiums'],
+                'points': round(data['points'], 1),
+                'races': data['races'],
+                'team': data['team'],
+                'teamId': data['teamId'],
+                'championship_pos': data['championship_pos'],
+                'fastest_laps': data['fastest_laps'],
+                'dnfs': data['dnfs'],
+                'best_finish': data['best_finish'],
+                'win_positions': [r['position'] for r in data['results']],
+            }
+
+        career_data = {
+            'driver_id': driver_id,
+            'driver_info': driver_info,
+            'seasons': seasons_clean,
+            'team_history': team_history,
+            'totals': {
+                'championships': championships,
+                'wins': total_wins,
+                'podiums': total_podiums,
+                'poles': total_poles,
+                'fastest_laps': total_fastest_laps,
+                'total_points': round(total_points, 1),
+                'total_races': total_races,
+                'seasons_count': len(seasons),
+                'win_rate': round(total_wins / max(total_races, 1) * 100, 1),
+                'podium_rate': round(total_podiums / max(total_races, 1) * 100, 1),
+                'peak_season': peak_year,
+            },
+        }
+
+        # Cache result
+        career_cache[driver_id] = career_data
+        print(f"[Career] Successfully fetched {driver_id}: {len(seasons)} seasons, {total_wins} wins")
+        return career_data
+
+    except Exception as e:
+        print(f"[Career Error] {driver_id}: {e}")
+        return {}
+
