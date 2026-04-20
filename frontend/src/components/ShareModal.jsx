@@ -16,15 +16,43 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
   const [format, setFormat]             = useState('square');
   const [isGenerating, setGenerating]   = useState(false);
   const [isMobile, setIsMobile]         = useState(false);
+  const [viewport, setViewport]         = useState({ width: 1280, height: 800 });
   const EXPORT_CARD_ID = 'share-card-export';
 
   // Responsive check
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => {
+      setIsMobile(window.innerWidth < 768);
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    };
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose?.();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   const canUsePortal = typeof document !== 'undefined';
 
@@ -148,15 +176,22 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
   };
 
   // ── Scale for preview ──────────────────────────────────────────────────────
-  const SCALE    = isMobile ? 0.28 : 0.42;
+  const baseHeight = format === 'portrait' ? 1350 : 1080;
+  const reserveHeight = isMobile ? 360 : 320;
+  const maxPreviewW = isMobile
+    ? Math.max(240, Math.min(viewport.width - 32, 420))
+    : Math.max(320, Math.min(viewport.width - 120, 560));
+  const maxPreviewH = Math.max(240, viewport.height - reserveHeight);
+  const autoScale = Math.min(maxPreviewW / 1080, maxPreviewH / baseHeight);
+  const SCALE = Math.min(isMobile ? 0.34 : 0.46, Math.max(isMobile ? 0.2 : 0.24, autoScale));
   const previewW = 1080 * SCALE;
-  const previewH = (format === 'portrait' ? 1350 : 1080) * SCALE;
+  const previewH = baseHeight * SCALE;
 
   // ── Shared inner content ───────────────────────────────────────────────────
   const modalInner = (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/5">
+      <div className="sticky top-0 z-20 flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/5 bg-[rgba(14,14,14,0.98)]">
         <div>
           <div className="text-white font-['Space_Grotesk'] font-bold text-lg">Share Race Card</div>
           <div className="text-[#555] text-xs mt-0.5 font-['Space_Grotesk'] tracking-widest uppercase">Download or post to social</div>
@@ -224,7 +259,7 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
       </div>
 
       {/* Action buttons */}
-      <div className={`${isMobile ? 'flex flex-col' : 'flex'} gap-3 px-5 sm:px-6 pb-6`}>
+      <div className={`${isMobile ? 'flex flex-col' : 'flex'} gap-3 px-5 sm:px-6 py-4 sticky bottom-0 z-20 bg-[rgba(14,14,14,0.98)] border-t border-white/5`}>
         {/* Download */}
         <motion.button
           onClick={downloadCard}
@@ -290,7 +325,7 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
 
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[12000]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -301,9 +336,9 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
           {isMobile ? (
             /* ── Mobile: Bottom sheet ── */
             <motion.div
-              className="fixed bottom-0 left-0 right-0 z-[101] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 z-[12001] overflow-y-auto"
               style={{
-                maxHeight: '92vh',
+                maxHeight: '96vh',
                 borderRadius: '20px 20px 0 0',
                 boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
                 background: 'rgba(14, 14, 14, 0.95)',
@@ -325,7 +360,7 @@ export default function ShareModal({ isOpen, onClose, raceData }) {
           ) : (
             /* ── Desktop: Centered modal ── */
             <motion.div
-              className="fixed inset-0 z-[101] flex items-center justify-center p-4 overflow-y-auto"
+              className="fixed inset-0 z-[12001] flex items-center justify-center p-4 overflow-y-auto"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
