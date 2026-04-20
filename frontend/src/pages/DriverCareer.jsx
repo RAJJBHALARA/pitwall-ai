@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Flag, Zap, Timer, Calendar, TrendingUp, ChevronDown, Users, Search } from 'lucide-react';
-import { fetchCareerStats, fetchCareerComparison } from '../api';
+import { fetchCareerStats, fetchCareerComparison } from '../services/api';
 import { CAREER_DRIVERS, getCareerMoment } from '../utils/careerDrivers';
 import { getDriverImage } from '../utils/driverImages';
 import { getTeamColor } from '../utils/teamColors';
@@ -568,6 +568,8 @@ function HeroSection({ data, driver, animated, onCompare, onGoatToast }) {
             <img
               src={driverImage}
               alt={driver.name}
+              loading="lazy"
+              decoding="async"
               style={{
                 width: '85%',
                 maxHeight: 340,

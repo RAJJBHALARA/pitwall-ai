@@ -102,3 +102,16 @@ export const getPitWallAlert = (circuit) =>
 
 export const getCurrentForm = () =>
   api.get(`/api/current-form`)
+
+export const fetchCareerStats = async (driverId) => {
+  const response = await api.get(`/api/career?driver=${driverId}`, { timeout: 120000 })
+  return response.data
+}
+
+export const fetchCareerComparison = async (driver1Id, driver2Id) => {
+  const response = await slowApi.post('/api/career-compare', {
+    driver1_id: driver1Id,
+    driver2_id: driver2Id
+  })
+  return response.data
+}

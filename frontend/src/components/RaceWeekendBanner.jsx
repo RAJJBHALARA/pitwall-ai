@@ -107,6 +107,8 @@ export default function RaceWeekendBanner() {
               <img
                 src={flagUrl(status.race.country)}
                 alt={status.race.country}
+                loading="lazy"
+                decoding="async"
                 style={{ width: 22, height: 16, borderRadius: 2 }}
               />
               <span style={{
@@ -193,6 +195,8 @@ export default function RaceWeekendBanner() {
                 <img
                   src={flagUrl(race.country)}
                   alt={race.country}
+                  loading="lazy"
+                  decoding="async"
                   style={{ width: 22, height: 16, borderRadius: 2 }}
                 />
                 <span style={{
