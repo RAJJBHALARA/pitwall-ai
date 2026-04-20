@@ -30,6 +30,7 @@ const LAST_RACE = {
 
 function LastRaceCard({ dur }) {
   const shouldReduceMotion = useReducedMotion();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [shareOpen, setShareOpen] = useState(false);
 
   const shareData = {
