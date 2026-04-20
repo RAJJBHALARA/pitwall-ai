@@ -1,17 +1,26 @@
-import google.generativeai as genai
 import os
 import json
 import re
 import functools
 from dotenv import load_dotenv
 
+try:
+    import google.generativeai as genai
+    GENAI_AVAILABLE = True
+except Exception as import_error:
+    genai = None
+    GENAI_AVAILABLE = False
+    print(f"[WARNING] google-generativeai import failed: {import_error}. AI generation disabled; deterministic fallbacks will be used.")
+
 load_dotenv()
 
 # We check it at startup in main.py, but for local tests it's useful to verify here
 api_key = os.getenv("GEMINI_API_KEY")
-AI_ENABLED = bool(api_key)
-if api_key:
+AI_ENABLED = bool(api_key and GENAI_AVAILABLE)
+if api_key and GENAI_AVAILABLE:
     genai.configure(api_key=api_key)
+elif api_key and not GENAI_AVAILABLE:
+    print("[WARNING] GEMINI_API_KEY is set but google-generativeai is unavailable. Falling back to deterministic analysis.")
 else:
     print("[WARNING] GEMINI_API_KEY not set in ai_advisor.py. AI generation disabled; deterministic fallbacks will be used.")
 
@@ -155,6 +164,139 @@ def _build_lap_fallback(telemetry: dict, driver: str, race: str, lap: int) -> st
         f"from cleaner corner exits and improved traction consistency."
     )
 
+
+DRIVER_META = {
+    "VER": {"name": "Max Verstappen", "team": "Red Bull Racing", "price_range": "$29-31M"},
+    "NOR": {"name": "Lando Norris", "team": "McLaren", "price_range": "$27-30M"},
+    "LEC": {"name": "Charles Leclerc", "team": "Ferrari", "price_range": "$25-28M"},
+    "PIA": {"name": "Oscar Piastri", "team": "McLaren", "price_range": "$23-26M"},
+    "RUS": {"name": "George Russell", "team": "Mercedes", "price_range": "$21-24M"},
+    "HAM": {"name": "Lewis Hamilton", "team": "Ferrari", "price_range": "$23-26M"},
+    "SAI": {"name": "Carlos Sainz", "team": "Williams", "price_range": "$18-22M"},
+    "ALO": {"name": "Fernando Alonso", "team": "Aston Martin", "price_range": "$17-21M"},
+    "STR": {"name": "Lance Stroll", "team": "Aston Martin", "price_range": "$13-16M"},
+    "GAS": {"name": "Pierre Gasly", "team": "Alpine", "price_range": "$12-15M"},
+    "OCO": {"name": "Esteban Ocon", "team": "Haas", "price_range": "$12-15M"},
+    "TSU": {"name": "Yuki Tsunoda", "team": "RB", "price_range": "$11-14M"},
+    "ALB": {"name": "Alexander Albon", "team": "Williams", "price_range": "$11-14M"},
+    "HUL": {"name": "Nico Hulkenberg", "team": "Kick Sauber", "price_range": "$10-13M"},
+    "MAG": {"name": "Kevin Magnussen", "team": "Haas", "price_range": "$9-12M"},
+    "LAW": {"name": "Liam Lawson", "team": "RB", "price_range": "$9-12M"},
+    "ANT": {"name": "Andrea Kimi Antonelli", "team": "Mercedes", "price_range": "$12-16M"},
+    "BEA": {"name": "Oliver Bearman", "team": "Haas", "price_range": "$8-11M"},
+    "DOO": {"name": "Jack Doohan", "team": "Alpine", "price_range": "$8-11M"},
+    "COL": {"name": "Franco Colapinto", "team": "Alpine", "price_range": "$8-11M"},
+    "BOT": {"name": "Valtteri Bottas", "team": "Kick Sauber", "price_range": "$9-12M"},
+    "ZHO": {"name": "Zhou Guanyu", "team": "Kick Sauber", "price_range": "$9-12M"},
+}
+
+DEFAULT_FANTASY_CODES = ["VER", "NOR", "LEC", "PIA", "RUS", "HAM", "SAI", "ALO"]
+
+
+def _norm_code(value: str) -> str:
+    return (value or "").strip().upper()
+
+
+def _extract_recent_positions(form_data: dict) -> dict:
+    scores = {}
+    if not isinstance(form_data, dict):
+        return scores
+
+    for raw_code, entries in form_data.items():
+        code = _norm_code(raw_code)
+        if not code or not isinstance(entries, list):
+            continue
+
+        score = 0.0
+        for idx, row in enumerate(entries[:3]):
+            if not isinstance(row, dict):
+                continue
+            pos = _to_int(row.get("position"), 99)
+            if pos <= 0:
+                continue
+            weight = 1.0 - (idx * 0.2)  # recent races are weighted higher
+            base = max(0, 26 - pos)
+            podium_bonus = 6 if pos == 1 else 4 if pos == 2 else 2 if pos == 3 else 0
+            score += max(0.1, weight) * (base + podium_bonus)
+
+        scores[code] = round(score, 3)
+
+    return scores
+
+
+def _build_fantasy_fallback(race: str, form_data: dict, reason: str = "") -> dict:
+    scores = _extract_recent_positions(form_data)
+
+    ranked = sorted(
+        [c for c in scores.keys() if c in DRIVER_META],
+        key=lambda c: scores.get(c, 0),
+        reverse=True
+    )
+
+    picks = []
+    for code in ranked:
+        if code not in picks:
+            picks.append(code)
+        if len(picks) == 5:
+            break
+
+    for code in DEFAULT_FANTASY_CODES:
+        if len(picks) == 5:
+            break
+        if code not in picks and code in DRIVER_META:
+            picks.append(code)
+
+    # Team score based on selected drivers' trend scores
+    team_scores = {}
+    for code in picks:
+        team = DRIVER_META[code]["team"]
+        team_scores[team] = team_scores.get(team, 0.0) + max(scores.get(code, 0.0), 5.0)
+
+    constructor_name = max(team_scores, key=team_scores.get) if team_scores else "McLaren"
+
+    def _driver_reason(code: str) -> str:
+        trend = scores.get(code, 0.0)
+        if trend >= 55:
+            return "Recent results show strong podium-level form and reliable points potential."
+        if trend >= 35:
+            return "Consistent finishes make this driver a stable fantasy points pick."
+        return "Solid value option with upside if race strategy and clean air align."
+
+    drivers = [
+        {
+            "code": code,
+            "name": DRIVER_META[code]["name"],
+            "team": DRIVER_META[code]["team"],
+            "reasoning": _driver_reason(code),
+            "price_range": DRIVER_META[code]["price_range"],
+        }
+        for code in picks
+    ]
+
+    # Avoid list from lowest-scoring known drivers in current form data
+    avoid_pool = sorted(
+        [c for c in scores.keys() if c in DRIVER_META and c not in picks],
+        key=lambda c: scores.get(c, 0)
+    )
+    drivers_to_avoid = avoid_pool[:2] if avoid_pool else ["MAG", "ZHO"]
+
+    key_insight = (
+        f"Fallback lineup for {race}: prioritize recent consistency and team momentum while balancing risk across top constructors."
+    )
+    if reason:
+        key_insight += f" ({reason})"
+
+    return {
+        "drivers": drivers,
+        "constructor": {
+            "name": constructor_name,
+            "reasoning": "Constructor selected from strongest aggregated driver form in recent races.",
+        },
+        "key_insight": key_insight,
+        "drivers_to_avoid": drivers_to_avoid,
+        "fallback": True,
+    }
+
 def parse_json_response(text: str) -> dict:
     try:
         clean = re.sub(r'```json|```', '', text).strip()
@@ -243,10 +385,14 @@ def get_fantasy_picks(race: str, form_data: dict) -> dict:
 
         retry_prompt = prompt + "\nPREVIOUS ATTEMPT WAS INVALID. Return only valid JSON with clear English reasoning."
         text2 = _generate_text(retry_prompt)
-        return parse_json_response(text2)
+        parsed2 = parse_json_response(text2)
+        if not parsed2.get("error"):
+            return parsed2
+
+        return _build_fantasy_fallback(race, form_data, "AI JSON parse failed")
     except Exception as e:
         print(f"[Gemini Fantasy Error] {e}")
-        return parse_json_response("{}") # Will trigger the safe fallback structure
+        return _build_fantasy_fallback(race, form_data, "AI generation exception")
 
 def explain_lap(telemetry: dict, driver: str, race: str, lap: int) -> str:
     prompt = f"""You are an elite F1 telemetry expert delivering a professional lap breakdown.
