@@ -3,6 +3,7 @@ import { Sparkles, Trophy, TrendingDown, TrendingUp, AlertCircle, ShieldAlert, S
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useStaggerChildren } from '../utils/useStaggerChildren';
 import { useTypewriter } from '../utils/useTypewriter';
+import toast from 'react-hot-toast';
 import SkeletonLoader from '../components/SkeletonLoader';
 import CustomDropdown from '../components/CustomDropdown';
 import PageTransition from '../components/PageTransition';
@@ -10,6 +11,7 @@ import { getFantasyPicks, getAvailableRaces } from '../services/api';
 import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
 import { useMode } from '../context/ModeContext';
+import { getTeamColor } from '../utils/teamColors';
 
 export default function FantasyPicks() {
   const shouldReduceMotion = useReducedMotion();
@@ -32,11 +34,74 @@ export default function FantasyPicks() {
   
   const [currentForm, setCurrentForm] = useState({});
   const [formSource, setFormSource] = useState('');
+  const [data, setData] = useState(null);
 
   const displayedInsight = useTypewriter(keyInsight, 40);
 
   // Share state
   const [shareState, setShareState] = useState('idle'); // idle | copied | tweeted
+
+  const [myTeam, setMyTeam] = useState([]);
+  const BUDGET = 100;
+
+  const isInTeam = (driverCode) => myTeam.some(d => d.code === driverCode);
+
+  const addToTeam = (driver) => {
+    if (myTeam.length >= 5) {
+      toast.error('Team is full! Max 5 drivers.');
+      return;
+    }
+    if (myTeam.find(d => d.code === driver.code)) {
+      toast.error(`${driver.name} already in team`);
+      return;
+    }
+    setMyTeam(prev => [...prev, driver]);
+    toast.success(`${driver.name} added to team`);
+  };
+
+  const removeFromTeam = (driverCode) => {
+    setMyTeam(prev => prev.filter(d => d.code !== driverCode));
+    toast.success('Driver removed');
+  };
+
+  const assembleAutoLineup = () => {
+    if (!data?.drivers || data.drivers.length === 0) {
+      toast.error('Get AI picks first!');
+      return;
+    }
+
+    const top5 = data.drivers.slice(0, 5).map((d, i) => ({
+      id: i + 1,
+      name: d.name || d.code,
+      code: d.code,
+      price: d.price_range || '---',
+      price_range: d.price_range || '---',
+      team: d.team || 'Unknown',
+      reasoning: d.reasoning || '',
+      trend: i < 3 ? 'up' : 'static',
+    }));
+
+    setMyTeam(top5);
+
+    setTimeout(() => {
+      document.getElementById('my-team-section')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 300);
+
+    toast.success('AI lineup assembled! 🏎️');
+  };
+
+  const budgetUsed = myTeam.reduce((sum, d) => {
+    const match = (d.price_range || d.price || '').match(/\$(\d+)-(\d+)M/);
+    if (match) {
+      return sum + ((parseInt(match[1]) + parseInt(match[2])) / 2);
+    }
+    return sum + 20;
+  }, 0);
+
+  const budgetRemaining = BUDGET - budgetUsed;
 
   const cleanUserText = (text = '') =>
     String(text).replace(/JSON\s+parse\s+failed/gi, 'Based on recent performance data').trim();
@@ -116,12 +181,14 @@ export default function FantasyPicks() {
           setDriversToAvoid([]);
           setCurrentForm({});
           setFormSource('');
+          setData(null);
         }
         setRetryAttempt(retryCount);
 
         const res = await getFantasyPicks(selectedRace, parseInt(season));
         if (cancelled) return;
         const data = res.data;
+        setData(data);
 
         if (data.error) {
           setError(cleanUserText(data.message || 'AI could not generate picks.'));
@@ -136,6 +203,7 @@ export default function FantasyPicks() {
           name: d.name || d.code,
           code: d.code,
           price: d.price_range || '---',
+          price_range: d.price_range || '---',
           team: d.team || 'Unknown',
           reasoning: d.reasoning || '',
           trend: i < 3 ? 'up' : 'static',
@@ -312,11 +380,12 @@ export default function FantasyPicks() {
               </div>
 
               <motion.button 
+                onClick={assembleAutoLineup}
                 {...(!isMobile && { whileHover: { gap: '12px' } })}
                 className="mt-12 w-full py-4 bg-[#e10600] text-white font-['Space_Grotesk'] font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(225,6,0,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
                 style={{ borderRadius: 100 }}
               >
-                Assemble Auto-Lineup <Sparkles size={14} />
+                Assemble Auto-Lineup ✦
               </motion.button>
 
               <a
@@ -492,16 +561,25 @@ export default function FantasyPicks() {
                                <p className="font-['Space_Grotesk'] font-extrabold text-[#47efda]">{driver.price}</p>
                              </div>
                              <motion.button 
+                               onClick={() => addToTeam(driver)}
+                               disabled={isInTeam(driver.code) || (myTeam.length >= 5 && !isInTeam(driver.code))}
                                whileTap={{ scale: 0.95 }}
                                {...(!isMobile && { whileHover: { scale: 1.02 } })}
                                 className="px-6 py-2 text-white text-[10px] font-bold uppercase tracking-widest transition-all hover:bg-[#e10600] hover:scale-[1.02]"
                                style={{
-                                 background: 'rgba(255,255,255,0.06)',
-                                 border: '1px solid rgba(255,255,255,0.12)',
+                                 padding: '10px 20px',
                                  borderRadius: 100,
+                                 background: isInTeam(driver.code) ? '#00D2BE' : 'transparent',
+                                 border: isInTeam(driver.code) ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                                 color: 'white',
+                                 cursor: isInTeam(driver.code) ? 'default' : 'pointer',
+                                 fontSize: 13,
+                                 fontWeight: 600,
+                                 transition: 'all 0.2s',
+                                 opacity: myTeam.length >= 5 && !isInTeam(driver.code) ? 0.4 : 1,
                                }}
                              >
-                               ADD TO TEAM
+                               {isInTeam(driver.code) ? '✓ ADDED' : 'ADD TO TEAM'}
                              </motion.button>
                           </div>
                        </div>
@@ -510,6 +588,113 @@ export default function FantasyPicks() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {myTeam.length > 0 && (
+              <div
+                id="my-team-section"
+                style={{
+                  marginTop: 40,
+                  padding: 24,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 16
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <h3 style={{ color: 'white', fontSize: 18, fontWeight: 700 }}>
+                    MY TEAM ({myTeam.length}/5)
+                  </h3>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ color: budgetRemaining < 0 ? '#E10600' : '#00D2BE', fontSize: 20, fontWeight: 700 }}>
+                      ${budgetRemaining.toFixed(1)}M left
+                    </div>
+                    <div style={{ color: '#666', fontSize: 12 }}>
+                      of $100M budget
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  height: 4,
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: 2,
+                  marginBottom: 20,
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min((budgetUsed / BUDGET) * 100, 100)}%`,
+                    background: budgetRemaining < 0 ? '#E10600' : '#00D2BE',
+                    borderRadius: 2,
+                    transition: 'width 0.3s ease'
+                  }} />
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {myTeam.map(driver => (
+                    <div
+                      key={driver.code}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '8px 14px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${getTeamColor(driver.team)}40`,
+                        borderRadius: 100,
+                        borderLeft: `3px solid ${getTeamColor(driver.team)}`
+                      }}
+                    >
+                      <img
+                        src={getFlagUrl(driver.code)}
+                        style={{ width: 16, height: 12 }}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <span style={{ color: 'white', fontSize: 13, fontWeight: 600 }}>
+                        {driver.code || driver.name}
+                      </span>
+                      <button
+                        onClick={() => removeFromTeam(driver.code)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#666',
+                          cursor: 'pointer',
+                          fontSize: 14,
+                          padding: 0,
+                          lineHeight: 1
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {myTeam.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setMyTeam([]);
+                      toast.success('Team cleared');
+                    }}
+                    style={{
+                      marginTop: 16,
+                      background: 'none',
+                      border: '1px solid rgba(255,0,0,0.3)',
+                      color: '#E10600',
+                      padding: '8px 16px',
+                      borderRadius: 100,
+                      cursor: 'pointer',
+                      fontSize: 12
+                    }}
+                  >
+                    Clear Team
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

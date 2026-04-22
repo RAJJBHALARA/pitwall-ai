@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useEffect, lazy, Suspense } from 'react';
+import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import BackendWakeup from './components/BackendWakeup';
 
@@ -22,6 +23,30 @@ function App() {
   return (
     <>
       <BackendWakeup />
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            background: '#1a1a1a',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 12,
+            fontSize: 14
+          },
+          success: {
+            iconTheme: {
+              primary: '#00D2BE',
+              secondary: '#000'
+            }
+          },
+          error: {
+            iconTheme: {
+              primary: '#E10600',
+              secondary: '#fff'
+            }
+          }
+        }}
+      />
       <AnimatePresence mode="wait">
         <Suspense fallback={
           <div style={{
