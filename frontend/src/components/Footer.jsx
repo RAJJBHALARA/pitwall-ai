@@ -6,7 +6,7 @@ export default function Footer() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('https://api.github.com/repos/RAJJBHALARA/boxbox')
+    fetch('https://api.github.com/repos/RAJJBHALARA/Box-Box')
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled && typeof d?.stargazers_count === 'number') {
@@ -38,7 +38,7 @@ export default function Footer() {
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
         <a
-          href="https://github.com/RAJJBHALARA/boxbox"
+          href="https://github.com/RAJJBHALARA/Box-Box"
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -63,7 +63,7 @@ export default function Footer() {
         <span style={{ color: '#333' }}>·</span>
 
         <a
-          href="https://github.com/RAJJBHALARA/boxbox"
+          href="https://github.com/RAJJBHALARA/Box-Box"
           target="_blank"
           rel="noopener noreferrer"
           style={{

@@ -192,7 +192,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('https://api.github.com/repos/RAJJBHALARA/boxbox')
+    fetch('https://api.github.com/repos/RAJJBHALARA/Box-Box')
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled && typeof d?.stargazers_count === 'number') {
@@ -258,7 +258,7 @@ export default function Home() {
                 }
               </motion.p>
               <a
-                href="https://github.com/RAJJBHALARA/boxbox"
+                href="https://github.com/RAJJBHALARA/Box-Box"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
