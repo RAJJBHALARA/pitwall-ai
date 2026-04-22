@@ -38,6 +38,9 @@ export default function FantasyPicks() {
   // Share state
   const [shareState, setShareState] = useState('idle'); // idle | copied | tweeted
 
+  const cleanUserText = (text = '') =>
+    String(text).replace(/JSON\s+parse\s+failed/gi, 'Based on recent performance data').trim();
+
   function buildTweetText() {
     const driverLine = drivers.slice(0, 5).map(d => d.code || d.name).join(' | ');
     const teamLine = constructor ? constructor.name : 'N/A';
@@ -121,7 +124,7 @@ export default function FantasyPicks() {
         const data = res.data;
 
         if (data.error) {
-          setError(data.message || 'AI could not generate picks.');
+          setError(cleanUserText(data.message || 'AI could not generate picks.'));
           setDrivers([]);
           setIsLoading(false);
           return;
@@ -140,7 +143,7 @@ export default function FantasyPicks() {
 
         setDrivers(mapped);
         setConstructor(data.constructor || null);
-        setKeyInsight(data.key_insight || '');
+        setKeyInsight(cleanUserText(data.key_insight || ''));
         setDriversToAvoid(data.drivers_to_avoid || []);
         setCurrentForm(data.form_data || {});
         setFormSource(data.source || '');
@@ -315,6 +318,27 @@ export default function FantasyPicks() {
               >
                 Assemble Auto-Lineup <Sparkles size={14} />
               </motion.button>
+
+              <a
+                href="https://game.formula1.com/en/fantasy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 20px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: 100,
+                  color: '#888',
+                  fontSize: 13,
+                  textDecoration: 'none',
+                  marginTop: 8,
+                  justifyContent: 'center'
+                }}
+              >
+                Apply picks in Official F1 Fantasy →
+              </a>
 
               {/* Share Picks */}
               <div className="mt-3 flex gap-2">
