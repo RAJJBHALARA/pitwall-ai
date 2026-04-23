@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Share2, BarChart2, Lightbulb, AlertCircle } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAnimatedCounter } from '../utils/useAnimatedCounter';
-import { useTypewriter } from '../utils/useTypewriter';
 import CustomDropdown from '../components/CustomDropdown';
 import PageTransition from '../components/PageTransition';
 import { getRivalryStats, getDrivers } from '../services/api';
@@ -101,12 +100,20 @@ export default function RivalryTracker() {
   const points1 = useAnimatedCounter(p1, 1.5, 0.7);
   const points2 = useAnimatedCounter(p2, 1.5, 0.7);
 
-  const displayedAnalysis = useTypewriter(aiText, 30);
-
   const isCorrupted = (text) => {
     if (!text) return true;
-    const doubled = (text.match(/([bcdfghjklmnpqrstvwxyz])\1/gi) || []).length;
-    return doubled > 4;
+
+    if (/(.)\1{2,}/.test(text)) return true;
+
+    const doubledAll = (text.match(/([a-z])\1/gi) || []).length;
+    if (doubledAll > 4) return true;
+
+    const weirdLongWords = (text.match(/[A-Za-z']{10,}/g) || []).filter(
+      (w) => /([aeiou])\1|([bcdfghjklmnpqrstvwxyz])\1/i.test(w)
+    );
+    if (weirdLongWords.length > 0) return true;
+
+    return false;
   };
 
   const calcPercent = (a, b) => {
@@ -335,7 +342,7 @@ export default function RivalryTracker() {
             </div>
           ) : aiText && !isCorrupted(aiText) ? (
             <p className="text-[#e5e2e1] text-lg leading-relaxed relative z-10 font-['Inter']">
-              {displayedAnalysis || 'No AI analysis available for this matchup.'}
+              {aiText || 'No AI analysis available for this matchup.'}
             </p>
           ) : aiText && isCorrupted(aiText) ? (
             <p

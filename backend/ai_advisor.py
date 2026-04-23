@@ -99,6 +99,17 @@ def is_clean_text(text: str) -> bool:
     if re.search(r'(.)\1{2,}', text):
         return False
 
+    # If too many doubled pairs appear overall, treat as corruption.
+    # This catches patterns like: "teestttiiitiaa" or "llyywiihh".
+    doubled_pairs_all = re.findall(r'([a-z])\1', text, re.IGNORECASE)
+    if len(doubled_pairs_all) > 4:
+        return False
+
+    # Reject unnaturally long words containing repeated vowels/consonants.
+    for token in re.findall(r"[A-Za-z']+", text):
+        if len(token) >= 10 and re.search(r'([aeiou])\1|([bcdfghjklmnpqrstvwxyz])\1', token, re.IGNORECASE):
+            return False
+
     if re.search(
         r'[bcdfghjklmnpqrstvwxyz]{2}[bcdfghjklmnpqrstvwxyz]{2}',
         text,
