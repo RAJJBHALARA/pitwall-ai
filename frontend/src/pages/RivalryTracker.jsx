@@ -103,6 +103,12 @@ export default function RivalryTracker() {
 
   const displayedAnalysis = useTypewriter(aiText, 30);
 
+  const isCorrupted = (text) => {
+    if (!text) return true;
+    const doubled = (text.match(/([bcdfghjklmnpqrstvwxyz])\1/gi) || []).length;
+    return doubled > 4;
+  };
+
   const calcPercent = (a, b) => {
     const total = a + b;
     if (total === 0) return ['50%', '50%'];
@@ -327,9 +333,23 @@ export default function RivalryTracker() {
               <div className="h-4 w-3/4 bg-white/5 rounded" />
               <div className="h-4 w-1/2 bg-white/5 rounded" />
             </div>
-          ) : (
+          ) : aiText && !isCorrupted(aiText) ? (
             <p className="text-[#e5e2e1] text-lg leading-relaxed relative z-10 font-['Inter']">
               {displayedAnalysis || 'No AI analysis available for this matchup.'}
+            </p>
+          ) : aiText && isCorrupted(aiText) ? (
+            <p
+              className="text-lg leading-relaxed relative z-10 font-['Inter']"
+              style={{ color: '#666', fontStyle: 'italic' }}
+            >
+              AI analysis temporarily unavailable. Check back shortly.
+            </p>
+          ) : (
+            <p
+              className="text-lg leading-relaxed relative z-10 font-['Inter']"
+              style={{ color: '#666' }}
+            >
+              Loading analysis...
             </p>
           )}
         </motion.div>
