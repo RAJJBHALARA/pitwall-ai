@@ -142,7 +142,7 @@ export default function RivalryTracker() {
   return (
     <PageTransition>
       <div className="pt-8 pb-28 px-4 max-w-4xl mx-auto min-h-screen w-full">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col mb-8 gap-2">
           <motion.h1 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -154,24 +154,29 @@ export default function RivalryTracker() {
             {isBeginnerMode ? 'SHOWDOWN' : 'HUB'}
           </motion.h1>
           {isBeginnerMode && (
-            <p className="text-sm text-[#999] font-['Inter'] mt-1">Pick two drivers and see who's been better this season 🏆</p>
+            <p className="text-sm text-[#999] font-['Inter']">Pick two drivers and see who's been better this season 🏆</p>
           )}
         </div>
 
         {/* Year + Driver Selectors */}
-        <div className="flex flex-wrap justify-between items-center mb-8 gap-4">
-          <div className="flex gap-4 flex-wrap">
-            <div className="w-28">
-              <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023']} onChange={setSeason} />
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto">
+            <div className="col-span-1">
+              <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023', '2022']} onChange={setSeason} />
+              {parseInt(season) >= 2025 ? (
+                <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">✓ LIVE DATA</p>
+              ) : (
+                <p className="text-[10px] text-[#666] mt-1">HISTORICAL</p>
+              )}
             </div>
-            <div className="w-28">
+            <div className="col-span-1">
               <CustomDropdown label="Driver 1" value={driver1} options={driverOptions.filter(d => d !== driver2)} onChange={setDriver1} />
             </div>
-            <div className="w-28">
+            <div className="col-span-2 md:col-span-1">
               <CustomDropdown label="Driver 2" value={driver2} options={driverOptions.filter(d => d !== driver1)} onChange={setDriver2} />
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 self-end md:self-auto">
             <motion.button 
               {...(!isMobile && { whileHover: { scale: 1.1 } })}
               whileTap={{ scale: 0.9 }}

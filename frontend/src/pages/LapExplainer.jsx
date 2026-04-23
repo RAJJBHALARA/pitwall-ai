@@ -136,8 +136,15 @@ export default function LapExplainer() {
             </p>
           </div>
           
-          <div className="flex flex-wrap gap-4">
-            <CustomDropdown label="Season" value={year} options={['2026', '2025', '2024', '2023']} onChange={setYear} />
+          <div className="flex flex-wrap gap-6">
+            <div>
+              <CustomDropdown label="Season" value={year} options={['2026', '2025', '2024', '2023', '2022']} onChange={setYear} />
+              {parseInt(year) >= 2025 ? (
+                <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">✓ LIVE DATA (OPENF1)</p>
+              ) : (
+                <p className="text-[10px] text-[#666] mt-1">HISTORICAL (FASTF1)</p>
+              )}
+            </div>
             <CustomDropdown label="Grand Prix" value={gp} options={options.races} onChange={setGp} />
             <CustomDropdown label="Driver" value={driver} options={options.drivers.map(d => d.code)} onChange={setDriver} />
             <CustomDropdown label="Lap" value={lap} options={lapOptions} onChange={setLap} />
@@ -145,9 +152,14 @@ export default function LapExplainer() {
         </div>
 
         {error && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8 p-4 bg-red-900/20 border border-red-500/50 rounded flex items-center gap-3 text-red-500">
-            <AlertCircle size={20} />
-            <span className="font-['Space_Grotesk'] font-bold uppercase tracking-widest text-sm">{error}</span>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8 p-4 bg-red-900/20 border border-red-500/50 rounded flex flex-col gap-2 text-red-500">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={20} />
+              <span className="font-['Space_Grotesk'] font-bold uppercase tracking-widest text-sm">{error}</span>
+            </div>
+            {parseInt(year) >= 2025 && (
+              <p className="text-xs ml-8 opacity-80">Telemetry for {year} may be limited. Try selecting 2024 for the most reliable historical data.</p>
+            )}
           </motion.div>
         )}
 

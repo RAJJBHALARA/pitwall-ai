@@ -28,22 +28,24 @@ generation_config = (
     genai.GenerationConfig(
         temperature=0.1,
         top_p=0.8,
-        top_k=20,
-        max_output_tokens=250,
+        top_k=10,
+        max_output_tokens=200,
+        candidate_count=1,
     )
     if GENAI_AVAILABLE
     else {
         "temperature": 0.1,
         "top_p": 0.8,
-        "top_k": 20,
-        "max_output_tokens": 250,
+        "top_k": 10,
+        "max_output_tokens": 200,
+        "candidate_count": 1,
     }
 )
 model = None
 if AI_ENABLED:
     try:
         model = genai.GenerativeModel(
-            "gemini-1.5-pro",
+            "gemini-1.5-flash",
             generation_config=generation_config
         )
     except Exception as e:
@@ -67,15 +69,15 @@ def _generate_text(prompt: str) -> str:
     if not AI_ENABLED:
         return ""
 
-    preferred = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+    preferred = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
     candidate_models = []
-    for name in [preferred, "gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.5-flash"]:
+    for name in [preferred, "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"]:
         if name not in candidate_models:
             candidate_models.append(name)
 
     for name in candidate_models:
         try:
-            active_model = model if name == "gemini-1.5-pro" and model else _get_model(name)
+            active_model = model if name == "gemini-1.5-flash" and model else _get_model(name)
             response = active_model.generate_content(prompt)
             text = (getattr(response, "text", "") or "").strip()
             if text:
@@ -93,35 +95,23 @@ def _looks_like_two_sentences(text: str) -> bool:
 
 
 def is_clean_text(text: str) -> bool:
-    if not text or len(text) < 20:
+    if not text:
         return False
-
-    if re.search(r'(.)\1{2,}', text):
+    if len(text.strip()) < 15:
         return False
-
-    # If too many doubled pairs appear overall, treat as corruption.
-    # This catches patterns like: "teestttiiitiaa" or "llyywiihh".
-    doubled_pairs_all = re.findall(r'([a-z])\1', text, re.IGNORECASE)
-    if len(doubled_pairs_all) > 4:
+    if not text.strip()[0].isupper():
         return False
-
-    # Reject unnaturally long words containing repeated vowels/consonants.
-    for token in re.findall(r"[A-Za-z']+", text):
-        if len(token) >= 10 and re.search(r'([aeiou])\1|([bcdfghjklmnpqrstvwxyz])\1', token, re.IGNORECASE):
-            return False
-
-    if re.search(
-        r'[bcdfghjklmnpqrstvwxyz]{2}[bcdfghjklmnpqrstvwxyz]{2}',
-        text,
-        re.IGNORECASE,
-    ):
-        doubled = re.findall(r'([bcdfghjklmnpqrstvwxyz])\1', text, re.IGNORECASE)
-        if len(doubled) > 3:
-            return False
-
-    if not text[0].isupper():
+    
+    # Detect doubled chars (main corruption sign)
+    # e.g. "wwtth" "ooitss" "rivallr"
+    doubled = re.findall(r'([a-z])\1', text, re.IGNORECASE)
+    if len(doubled) > 4:
         return False
-
+    
+    # Detect number+letter combos (corruption)
+    if re.search(r'\d{2}[a-z]{2}', text):
+        return False
+        
     return True
 
 

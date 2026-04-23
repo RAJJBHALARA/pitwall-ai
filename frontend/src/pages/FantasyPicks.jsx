@@ -260,9 +260,14 @@ export default function FantasyPicks() {
         </header>
 
         {/* Race selector */}
-        <div className="flex flex-wrap gap-4 mb-10">
-          <div className="w-28">
-            <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023']} onChange={setSeason} />
+        <div className="flex flex-wrap gap-6 mb-10">
+          <div className="w-32">
+            <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023', '2022']} onChange={setSeason} />
+            {parseInt(season) >= 2025 ? (
+              <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">✓ LIVE DATA (OPENF1)</p>
+            ) : (
+              <p className="text-[10px] text-[#666] mt-1">HISTORICAL (FASTF1)</p>
+            )}
           </div>
           <div className="w-64">
             <CustomDropdown label="Grand Prix" value={selectedRace} options={raceList} onChange={setSelectedRace} />

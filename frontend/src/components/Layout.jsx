@@ -47,7 +47,7 @@ export default function Layout() {
   return (
     <div className="dark min-h-screen bg-[#0e0e0e] text-[#e5e2e1] font-['Inter']">
       <Navbar />
-      <div className="fixed top-[60px] w-full z-40">
+      <div className="sticky top-[60px] w-full z-40">
         <RaceWeekendBanner />
         <BeginnerBanner />
       </div>
@@ -71,7 +71,7 @@ export default function Layout() {
           </motion.div>
         )}
       </AnimatePresence>
-      <main className="pt-[60px] pb-24 md:pb-0 overflow-x-hidden">
+      <main className="pb-24 md:pb-0 overflow-x-hidden">
         <Outlet />
       </main>
       <Footer />

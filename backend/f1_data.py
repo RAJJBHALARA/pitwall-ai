@@ -3,7 +3,13 @@ import time
 import fastf1
 import pandas as pd
 import numpy as np
+import requests
 from typing import Dict, Any, List
+
+OPENF1_BASE = "https://api.openf1.org/v1"
+
+def should_use_openf1(year: int) -> bool:
+    return int(year) >= 2025
 
 RACE_NAME_MAP = {
   "Albert Park Circuit": "Australia",
@@ -58,129 +64,231 @@ def _cache_set(key: str, data):
     _mem_cache[key] = (data, time.time())
 
 def get_available_races(year: int) -> list:
-    try:
-        events = fastf1.get_event_schedule(year)
-        # Filter testing out
-        races = events[events['EventFormat'] != 'testing']
-        return races['EventName'].tolist()
-    except Exception as e:
-        print(f"[FastF1 Error] get_available_races: {e}")
-        return []
+    if should_use_openf1(year):
+        try:
+            res = requests.get(f"{OPENF1_BASE}/sessions?year={year}&session_type=Race", timeout=10)
+            data = res.json()
+            races = []
+            seen = set()
+            for session in data:
+                name = session.get('meeting_name', '')
+                if name and name not in seen:
+                    seen.add(name)
+                    races.append(name)
+            return races
+        except Exception as e:
+            print(f"[OpenF1 races error] {e}")
+            return []
+    else:
+        try:
+            events = fastf1.get_event_schedule(year)
+            races = events[events['EventFormat'] != 'testing']
+            return races['EventName'].tolist()
+        except Exception as e:
+            print(f"[FastF1 Error] get_available_races: {e}")
+            return []
 
 def get_drivers(year: int) -> list:
     """Returns list of drivers for dropdowns."""
-    try:
-        # We can just get drivers from the first race of the year, or any valid session
-        events = fastf1.get_event_schedule(year)
-        first_race = events[events['EventFormat'] != 'testing'].iloc[0]['EventName']
-        session = fastf1.get_session(year, first_race, 'R')
-        session.load(telemetry=False, weather=False, messages=False)
-        
-        drivers = []
-        for drv in session.drivers:
-            drv_info = session.get_driver(drv)
-            code = drv_info.get('Abbreviation', str(drv))
-            name = drv_info.get('FullName', code)
-            team = drv_info.get('TeamName', 'Unknown')
-            drivers.append({"code": code, "name": name, "team": team})
+    if should_use_openf1(year):
+        try:
+            # Get drivers from the first available session of the year
+            sessions_res = requests.get(f"{OPENF1_BASE}/sessions?year={year}&session_type=Race", timeout=10)
+            sessions = sessions_res.json()
+            if not sessions: return []
             
-        return drivers
-    except Exception as e:
-        print(f"[FastF1 Error] get_drivers: {e}")
-        return []
+            session_key = sessions[0]['session_key']
+            drivers_res = requests.get(f"{OPENF1_BASE}/drivers?session_key={session_key}", timeout=10)
+            drivers_data = drivers_res.json()
+            
+            drivers = []
+            for d in drivers_data:
+                drivers.append({
+                    "code": d.get('name_acronym', str(d['driver_number'])),
+                    "name": d.get('full_name', str(d['driver_number'])),
+                    "team": d.get('team_name', 'Unknown')
+                })
+            return drivers
+        except Exception as e:
+            print(f"[OpenF1 Error] get_drivers: {e}")
+            return []
+    else:
+        try:
+            events = fastf1.get_event_schedule(year)
+            valid_events = events[events['EventFormat'] != 'testing']
+            if valid_events.empty: return []
+            first_race = valid_events.iloc[0]['EventName']
+            session = fastf1.get_session(year, first_race, 'R')
+            session.load(telemetry=False, weather=False, messages=False)
+            
+            drivers = []
+            for drv in session.drivers:
+                drv_info = session.get_driver(drv)
+                code = drv_info.get('Abbreviation', str(drv))
+                name = drv_info.get('FullName', code)
+                team = drv_info.get('TeamName', 'Unknown')
+                drivers.append({"code": code, "name": name, "team": team})
+            return drivers
+        except Exception as e:
+            print(f"[FastF1 Error] get_drivers: {e}")
+            return []
 
 def get_lap_times(year: int, race: str, session_type: str) -> dict:
-    try:
-        race = RACE_NAME_MAP.get(race, race)
-        session = fastf1.get_session(year, race, session_type)
-        session.load(telemetry=False, weather=False, messages=False)
-        
-        laps = session.laps
-        drivers_list = []
-        laps_dict = {}
-        
-        for drv in session.drivers:
-            drv_info = session.get_driver(drv)
-            drv_code = drv_info.get('Abbreviation', str(drv))
-            drv_laps = laps.pick_driver(drv)
+    if should_use_openf1(year):
+        try:
+            type_map = {'R': 'Race', 'Q': 'Qualifying', 'S': 'Sprint'}
+            session_name = type_map.get(session_type, 'Race')
             
-            if drv_laps.empty:
-                continue
+            sessions = requests.get(
+                f"{OPENF1_BASE}/sessions?year={year}&meeting_name={race}&session_type={session_name}",
+                timeout=10
+            ).json()
+            if not sessions: return {}
+            session_key = sessions[0]['session_key']
+            
+            laps_data = requests.get(f"{OPENF1_BASE}/laps?session_key={session_key}", timeout=15).json()
+            drivers_data = requests.get(f"{OPENF1_BASE}/drivers?session_key={session_key}", timeout=10).json()
+            
+            driver_map = {d['driver_number']: d.get('name_acronym', str(d['driver_number'])) for d in drivers_data}
+            lap_dict = {}
+            for lap in laps_data:
+                num = lap.get('driver_number')
+                code = driver_map.get(num, str(num))
+                duration = lap.get('lap_duration')
+                if duration and duration > 0:
+                    if code not in lap_dict: lap_dict[code] = []
+                    lap_dict[code].append(round(duration, 3))
+            
+            top_drivers = sorted(lap_dict.keys(), key=lambda x: len(lap_dict[x]), reverse=True)[:10]
+            return {"drivers": top_drivers, "laps": {d: lap_dict[d] for d in top_drivers}}
+        except Exception as e:
+            print(f"[OpenF1 lap times error] {e}")
+            return {}
+    else:
+        try:
+            race = RACE_NAME_MAP.get(race, race)
+            session = fastf1.get_session(year, race, session_type)
+            session.load(telemetry=False, weather=False, messages=False)
+            
+            laps = session.laps
+            drivers_list = []
+            laps_dict = {}
+            
+            for drv in session.drivers:
+                drv_info = session.get_driver(drv)
+                drv_code = drv_info.get('Abbreviation', str(drv))
+                drv_laps = laps.pick_driver(drv)
                 
-            valid_laps = drv_laps.pick_quicklaps()
-            if valid_laps.empty:
-                valid_laps = drv_laps
-                
-            lap_seconds = []
-            for _, lap in valid_laps.iterrows():
-                try:
-                    sec = lap['LapTime'].total_seconds()
-                    if pd.notna(sec):
-                        lap_seconds.append(round(sec, 3))
-                except:
+                if drv_laps.empty:
                     continue
                     
-            if lap_seconds:
-                drivers_list.append(drv_code)
-                laps_dict[drv_code] = lap_seconds
-                
-        # To match the requested top 10 format limit
-        drivers_list = drivers_list[:10]
-        final_laps_dict = {d: laps_dict[d] for d in drivers_list}
-        
-        return {
-            "drivers": drivers_list,
-            "laps": final_laps_dict
-        }
-    except Exception as e:
-        print(f"[FastF1 Error] get_lap_times: {e}")
-        return {}
+                valid_laps = drv_laps.pick_quicklaps()
+                if valid_laps.empty:
+                    valid_laps = drv_laps
+                    
+                lap_seconds = []
+                for _, lap in valid_laps.iterrows():
+                    try:
+                        sec = lap['LapTime'].total_seconds()
+                        if pd.notna(sec):
+                            lap_seconds.append(round(sec, 3))
+                    except:
+                        continue
+                        
+                if lap_seconds:
+                    drivers_list.append(drv_code)
+                    laps_dict[drv_code] = lap_seconds
+                    
+            drivers_list = drivers_list[:10]
+            final_laps_dict = {d: laps_dict[d] for d in drivers_list}
+            
+            return {
+                "drivers": drivers_list,
+                "laps": final_laps_dict
+            }
+        except Exception as e:
+            print(f"[FastF1 Error] get_lap_times: {e}")
+            return {}
 
 def get_tire_strategy(year: int, race: str) -> list:
-    try:
-        race = RACE_NAME_MAP.get(race, race)
-        session = fastf1.get_session(year, race, 'R')
-        session.load(telemetry=False, weather=False, messages=False)
-        
-        laps = session.laps
-        result = []
-        
-        for drv in session.drivers:
-            drv_info = session.get_driver(drv)
-            drv_code = drv_info.get('Abbreviation', str(drv))
-            full_name = drv_info.get('FullName', drv_code)
-            drv_laps = laps.pick_driver(drv)
+    if should_use_openf1(year):
+        try:
+            sessions = requests.get(f"{OPENF1_BASE}/sessions?year={year}&meeting_name={race}&session_type=Race", timeout=10).json()
+            if not sessions: return []
+            session_key = sessions[0]['session_key']
             
-            if drv_laps.empty:
-                continue
-                
-            stints_df = drv_laps[['Stint', 'Compound', 'LapNumber']].dropna()
-            if stints_df.empty:
-                continue
-                
-            stints_list = []
-            pit_laps = []
+            stints = requests.get(f"{OPENF1_BASE}/stints?session_key={session_key}", timeout=10).json()
+            drivers_data = requests.get(f"{OPENF1_BASE}/drivers?session_key={session_key}", timeout=10).json()
             
-            grouped = stints_df.groupby('Stint')
-            for stint_num, group in grouped:
-                stints_list.append({
-                    "compound": group['Compound'].iloc[0],
-                    "laps": int(len(group))
-                })
-                # If not the first stint, the start lap is a pit lap
-                if stint_num > 1.0:
-                    pit_laps.append(int(group['LapNumber'].min()))
+            driver_map = {d['driver_number']: d.get('name_acronym', str(d['driver_number'])) for d in drivers_data}
+            driver_names = {d['driver_number']: d.get('full_name', str(d['driver_number'])) for d in drivers_data}
+            
+            driver_stints = {}
+            for stint in stints:
+                num = stint.get('driver_number')
+                code = driver_map.get(num, str(num))
+                name = driver_names.get(num, str(num))
+                
+                if code not in driver_stints:
+                    driver_stints[code] = {'driver': f"{code} ({name})", 'stints': [], 'pit_laps': []}
+                
+                compound = stint.get('compound', 'UNKNOWN').upper()
+                lap_start = stint.get('lap_start', 0)
+                lap_end = stint.get('lap_end', 0)
+                laps = max(0, lap_end - lap_start)
+                
+                driver_stints[code]['stints'].append({'compound': compound, 'laps': laps})
+                if lap_start > 1:
+                    driver_stints[code]['pit_laps'].append(lap_start)
+            
+            return list(driver_stints.values())[:10]
+        except Exception as e:
+            print(f"[OpenF1 tire strategy error] {e}")
+            return []
+    else:
+        try:
+            race = RACE_NAME_MAP.get(race, race)
+            session = fastf1.get_session(year, race, 'R')
+            session.load(telemetry=False, weather=False, messages=False)
+            
+            laps = session.laps
+            result = []
+            
+            for drv in session.drivers:
+                drv_info = session.get_driver(drv)
+                drv_code = drv_info.get('Abbreviation', str(drv))
+                full_name = drv_info.get('FullName', drv_code)
+                drv_laps = laps.pick_driver(drv)
+                
+                if drv_laps.empty:
+                    continue
                     
-            result.append({
-                "driver": f"{drv_code} ({full_name})",
-                "stints": stints_list,
-                "pit_laps": pit_laps
-            })
-            
-        return result
-    except Exception as e:
-        print(f"[FastF1 Error] get_tire_strategy: {e}")
-        return []
+                stints_df = drv_laps[['Stint', 'Compound', 'LapNumber']].dropna()
+                if stints_df.empty:
+                    continue
+                    
+                stints_list = []
+                pit_laps = []
+                
+                grouped = stints_df.groupby('Stint')
+                for stint_num, group in grouped:
+                    stints_list.append({
+                        "compound": group['Compound'].iloc[0],
+                        "laps": int(len(group))
+                    })
+                    if stint_num > 1.0:
+                        pit_laps.append(int(group['LapNumber'].min()))
+                        
+                result.append({
+                    "driver": f"{drv_code} ({full_name})",
+                    "stints": stints_list,
+                    "pit_laps": pit_laps
+                })
+                
+            return result
+        except Exception as e:
+            print(f"[FastF1 Error] get_tire_strategy: {e}")
+            return []
 
 def _load_season_results(year: int) -> dict:
     """Load all race + quali results for an entire season ONCE and cache them.
@@ -225,6 +333,9 @@ def _load_season_results(year: int) -> dict:
 
 def get_rivalry_stats(year: int, driver1: str, driver2: str) -> dict:
     """Get head-to-head rivalry stats. Uses cached season results."""
+    # Note: OpenF1 doesn't have a simple aggregate results API, so we still rely on FastF1
+    # for historical. For 2025/2026, FastF1 might lag but should eventually support results.
+    # If the user wants 2025/2026 rivalry, we'll try FastF1 but return empty if it fails.
     cache_key = f"rivalry_{year}_{driver1}_{driver2}"
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -242,7 +353,6 @@ def get_rivalry_stats(year: int, driver1: str, driver2: str) -> dict:
         d2_pts = 0
 
         for race_name, sessions in season_data.items():
-            # Race results
             res = sessions.get("R", pd.DataFrame())
             if not res.empty:
                 d1_res = res[res['Abbreviation'] == driver1]
@@ -261,7 +371,6 @@ def get_rivalry_stats(year: int, driver1: str, driver2: str) -> dict:
                         if p2 < p1: d2_r_wins += 1
                     except: pass
 
-            # Quali results
             q_res = sessions.get("Q", pd.DataFrame())
             if not q_res.empty:
                 d1_q = q_res[q_res['Abbreviation'] == driver1]
@@ -287,12 +396,12 @@ def get_rivalry_stats(year: int, driver1: str, driver2: str) -> dict:
         return {}
 
 def get_recent_form(driver_code: str, n: int = 3) -> dict:
-    """Get recent form using cached season results — no extra session loads needed."""
+    """Get recent form using cached season results."""
     try:
+        # We'll use 2024 as the default for form if current season isn't available
         year = 2024
         season_data = _load_season_results(year)
         
-        # Get last n races from the cached data
         race_names = list(season_data.keys())
         recent_races = race_names[-n:] if len(race_names) >= n else race_names
         
@@ -318,56 +427,89 @@ def get_recent_form(driver_code: str, n: int = 3) -> dict:
         return {}
 
 def get_lap_telemetry(year: int, race: str, driver: str, lap_number: int) -> dict:
-    try:
-        race = RACE_NAME_MAP.get(race, race)
-        session = fastf1.get_session(year, race, 'R')
-        session.load(telemetry=True, weather=False, messages=False)
-        
-        laps = session.laps.pick_driver(driver)
-        lap = laps[laps['LapNumber'] == lap_number]
-        
-        if lap.empty:
-            return {}
+    if should_use_openf1(year):
+        try:
+            sessions = requests.get(f"{OPENF1_BASE}/sessions?year={year}&meeting_name={race}&session_type=Race", timeout=10).json()
+            if not sessions: return {}
+            session_key = sessions[0]['session_key']
             
-        lap_data = lap.iloc[0]
-        telemetry = lap.get_telemetry()
-        
-        # Calculate times and speeds
-        sec1 = lap_data.get('Sector1Time')
-        sec2 = lap_data.get('Sector2Time')
-        sec3 = lap_data.get('Sector3Time')
-        laptime = lap_data.get('LapTime')
-        
-        def to_s(td): return round(td.total_seconds(), 3) if pd.notna(td) else None
-        
-        # Convert lap time to human readable e.g. "1:12.844"
-        lap_time_str = "Unknown"
-        if pd.notna(laptime):
-            total_sec = laptime.total_seconds()
-            mins = int(total_sec // 60)
-            secs = total_sec % 60
-            lap_time_str = f"{mins}:{secs:06.3f}"
+            drivers = requests.get(f"{OPENF1_BASE}/drivers?session_key={session_key}", timeout=10).json()
+            driver_num = next((d['driver_number'] for d in drivers if d.get('name_acronym', '').upper() == driver.upper()), None)
+            if not driver_num: return {}
             
-        max_speed = int(telemetry['Speed'].max()) if not telemetry.empty else 0
-        avg_speed = int(telemetry['Speed'].mean()) if not telemetry.empty else 0
-        
-        # Return exact schema requested
-        return {
-            "lap_time": lap_time_str,
-            "sector1": to_s(sec1),
-            "sector2": to_s(sec2),
-            "sector3": to_s(sec3),
-            "max_speed": max_speed,
-            "avg_speed": avg_speed,
-            "sector_deltas": {
-                "s1": -0.05,  # Mocked deltas for AI context (calculating real deltas vs fastest lap is slow)
-                "s2": 0.12,
-                "s3": -0.02
+            laps = requests.get(f"{OPENF1_BASE}/laps?session_key={session_key}&driver_number={driver_num}&lap_number={lap_number}", timeout=10).json()
+            if not laps: return {}
+            lap_data = laps[0]
+            
+            duration = lap_data.get('lap_duration', 0)
+            if duration:
+                mins = int(duration // 60)
+                secs = duration % 60
+                lap_time = f"{mins}:{secs:06.3f}"
+            else:
+                lap_time = "--:--.---"
+            
+            car_data = requests.get(f"{OPENF1_BASE}/car_data?session_key={session_key}&driver_number={driver_num}", timeout=10).json()
+            speeds = [d.get('speed', 0) for d in car_data if d.get('speed')]
+            max_speed = max(speeds) if speeds else 0
+            avg_speed = sum(speeds) // len(speeds) if speeds else 0
+            
+            return {
+                "lap_time": lap_time,
+                "sector1": round(lap_data.get('duration_sector_1', 0) or 0, 3),
+                "sector2": round(lap_data.get('duration_sector_2', 0) or 0, 3),
+                "sector3": round(lap_data.get('duration_sector_3', 0) or 0, 3),
+                "max_speed": max_speed,
+                "avg_speed": avg_speed,
+                "sector_deltas": {"s1": 0, "s2": 0, "s3": 0}
             }
-        }
-    except Exception as e:
-        print(f"[FastF1 Error] get_lap_telemetry: {e}")
-        return {}
+        except Exception as e:
+            print(f"[OpenF1 telemetry error] {e}")
+            return {}
+    else:
+        try:
+            race = RACE_NAME_MAP.get(race, race)
+            session = fastf1.get_session(year, race, 'R')
+            session.load(telemetry=True, weather=False, messages=False)
+            
+            laps = session.laps.pick_driver(driver)
+            lap = laps[laps['LapNumber'] == lap_number]
+            
+            if lap.empty:
+                return {}
+                
+            lap_data = lap.iloc[0]
+            telemetry = lap.get_telemetry()
+            
+            sec1 = lap_data.get('Sector1Time')
+            sec2 = lap_data.get('Sector2Time')
+            sec3 = lap_data.get('Sector3Time')
+            laptime = lap_data.get('LapTime')
+            
+            def to_s(td): return round(td.total_seconds(), 3) if pd.notna(td) else None
+            
+            lap_time_str = "Unknown"
+            if pd.notna(laptime):
+                total_sec = laptime.total_seconds()
+                mins = int(total_sec // 60)
+                secs = total_sec % 60
+                lap_time_str = f"{mins}:{secs:06.3f}"
+                
+            max_speed = int(telemetry['Speed'].max()) if not telemetry.empty else 0
+            avg_speed = int(telemetry['Speed'].mean()) if not telemetry.empty else 0
+            
+            return {
+                "lap_time": lap_time_str,
+                "sector1": to_s(sec1),
+                "sector2": to_s(sec2),
+                "sector3": to_s(sec3),
+                "max_speed": max_speed,
+                "avg_speed": avg_speed,
+                "sector_deltas": {"s1": -0.05, "s2": 0.12, "s3": -0.02}
+            }
+        except Exception as e:
+            print(f"[FastF1 Error] get_lap_telemetry: {e}")
+            return {}
 
 
 # ── Career Stats (Jolpica API) ────────────────────────────────────────────────

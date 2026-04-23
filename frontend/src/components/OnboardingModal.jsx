@@ -25,6 +25,7 @@ function OptionCard({
   onSelect,
 }) {
   const styleTokens = OPTION_STYLES[mode];
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   return (
     <motion.button
@@ -39,6 +40,8 @@ function OptionCard({
         padding: 20,
         cursor: 'pointer',
         transition: 'all 0.2s ease',
+        maxHeight: isMobile ? 180 : 'auto',
+        overflow: 'hidden'
       }}
       onMouseEnter={(e) => {
         if (!selected) {
