@@ -12,14 +12,19 @@ import CircuitInfo from '../components/CircuitInfo';
 import { getCircuitInfo } from '../utils/circuitData';
 import { useMode } from '../context/ModeContext';
 import ShareModal from '../components/ShareModal';
+import { getLatestCompletedRace, getDefaultYear } from '../utils/currentRace';
+
+const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022'];
+const RESOLVED_DEFAULT_YEAR = YEAR_OPTIONS.includes(getDefaultYear()) ? getDefaultYear() : '2026';
+const RESOLVED_DEFAULT_RACE = getLatestCompletedRace(parseInt(RESOLVED_DEFAULT_YEAR));
 
 export default function RaceAnalysis() {
   const shouldReduceMotion = useReducedMotion();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d;
 
-  const [season, setSeason] = useState('2026');
-  const [gp, setGp] = useState('AUSTRALIAN GP');
+  const [season, setSeason] = useState(RESOLVED_DEFAULT_YEAR);
+  const [gp, setGp] = useState(RESOLVED_DEFAULT_RACE?.name || 'Japanese Grand Prix');
   const [session, setSession] = useState('RACE');
 
   const topSpeed = useAnimatedCounter(342, 1.5, 0.3);
@@ -29,7 +34,7 @@ export default function RaceAnalysis() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const [races, setRaces] = useState(['Abu Dhabi Grand Prix']);
+  const [races, setRaces] = useState([RESOLVED_DEFAULT_RACE?.name || 'Japanese Grand Prix']);
   const [lapData, setLapData] = useState({ drivers: [], laps: {} });
   const [tireStrategy, setTireStrategy] = useState([]);
   
@@ -46,7 +51,12 @@ export default function RaceAnalysis() {
         const fetchedRaces = res.data.races || [];
         setRaces(fetchedRaces);
         if (fetchedRaces.length && !fetchedRaces.includes(gp)) {
-          setGp(fetchedRaces[0]);
+          const latestCompleted = getLatestCompletedRace(parseInt(season));
+          if (latestCompleted?.name && fetchedRaces.includes(latestCompleted.name)) {
+            setGp(latestCompleted.name);
+          } else {
+            setGp(fetchedRaces[fetchedRaces.length - 1]);
+          }
         }
       })
       .catch(err => {
@@ -165,7 +175,7 @@ export default function RaceAnalysis() {
           className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-white/5 pb-8"
         >
           <div>
-            <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023', '2022']} onChange={setSeason} />
+            <CustomDropdown label="Season" value={season} options={YEAR_OPTIONS} onChange={setSeason} />
             {parseInt(season) >= 2025 ? (
               <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">✓ LIVE DATA (OPENF1)</p>
             ) : (

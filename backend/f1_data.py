@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import requests
 from typing import Dict, Any, List
+from datetime import datetime, timezone
 
 OPENF1_BASE = "https://api.openf1.org/v1"
 
@@ -63,6 +64,86 @@ def _cache_set(key: str, data):
     """Store data in memory cache with current timestamp."""
     _mem_cache[key] = (data, time.time())
 
+
+def get_hardcoded_calendar(year: int) -> list:
+    calendars = {
+        2026: [
+            "Australian Grand Prix",
+            "Chinese Grand Prix",
+            "Japanese Grand Prix",
+            "Bahrain Grand Prix",
+        ],
+        2025: [
+            "Australian Grand Prix",
+            "Chinese Grand Prix",
+            "Japanese Grand Prix",
+            "Bahrain Grand Prix",
+            "Saudi Arabian Grand Prix",
+            "Miami Grand Prix",
+            "Emilia Romagna Grand Prix",
+            "Monaco Grand Prix",
+            "Spanish Grand Prix",
+            "Canadian Grand Prix",
+            "Austrian Grand Prix",
+            "British Grand Prix",
+            "Belgian Grand Prix",
+            "Hungarian Grand Prix",
+            "Dutch Grand Prix",
+            "Italian Grand Prix",
+            "Azerbaijan Grand Prix",
+            "Singapore Grand Prix",
+            "United States Grand Prix",
+            "Mexico City Grand Prix",
+            "São Paulo Grand Prix",
+            "Las Vegas Grand Prix",
+            "Qatar Grand Prix",
+            "Abu Dhabi Grand Prix",
+        ],
+    }
+    return calendars.get(int(year), calendars[2025])
+
+
+def race_has_data(year: int, race_name: str) -> bool:
+    """Check if a race has actually happened and has data available."""
+    future_races = [
+        "Abu Dhabi Grand Prix",
+        "Qatar Grand Prix",
+        "Las Vegas Grand Prix",
+        "São Paulo Grand Prix",
+        "Mexico City Grand Prix",
+        "United States Grand Prix",
+        "Singapore Grand Prix",
+    ]
+
+    if int(year) == 2026 and race_name in future_races:
+        return False
+
+    if not should_use_openf1(year):
+        return True
+
+    try:
+        res = requests.get(
+            f"{OPENF1_BASE}/sessions?year={year}&meeting_name={race_name}&session_type=Race",
+            timeout=5,
+        )
+        data = res.json()
+        return len(data) > 0
+    except Exception:
+        return True
+
+
+def _empty_telemetry_payload(error_message: str) -> dict:
+    return {
+        "error": error_message,
+        "lap_time": "--:--.---",
+        "sector1": 0,
+        "sector2": 0,
+        "sector3": 0,
+        "max_speed": 0,
+        "avg_speed": 0,
+        "sector_deltas": {"s1": 0, "s2": 0, "s3": 0},
+    }
+
 def get_available_races(year: int) -> list:
     if should_use_openf1(year):
         try:
@@ -70,15 +151,32 @@ def get_available_races(year: int) -> list:
             data = res.json()
             races = []
             seen = set()
+            now = datetime.now(timezone.utc)
+
             for session in data:
                 name = session.get('meeting_name', '')
+                date_start = session.get('date_start')
+
+                if date_start:
+                    try:
+                        race_date = datetime.fromisoformat(date_start.replace('Z', '+00:00'))
+                        if int(year) >= now.year and race_date > now:
+                            continue
+                    except Exception:
+                        pass
+
                 if name and name not in seen:
                     seen.add(name)
                     races.append(name)
+
+            if len(races) == 0:
+                print(f"[OpenF1] No races found for {year}, using calendar fallback.")
+                return get_hardcoded_calendar(year)
+
             return races
         except Exception as e:
             print(f"[OpenF1 races error] {e}")
-            return []
+            return get_hardcoded_calendar(year)
     else:
         try:
             events = fastf1.get_event_schedule(year)
@@ -86,7 +184,7 @@ def get_available_races(year: int) -> list:
             return races['EventName'].tolist()
         except Exception as e:
             print(f"[FastF1 Error] get_available_races: {e}")
-            return []
+            return get_hardcoded_calendar(year)
 
 def get_drivers(year: int) -> list:
     """Returns list of drivers for dropdowns."""
@@ -427,18 +525,32 @@ def get_recent_form(driver_code: str, n: int = 3) -> dict:
         return {}
 
 def get_lap_telemetry(year: int, race: str, driver: str, lap_number: int) -> dict:
+    if not race_has_data(int(year), race):
+        return _empty_telemetry_payload(
+            f"{race} {year} has not happened yet. Please select a completed race."
+        )
+
     if should_use_openf1(year):
         try:
             sessions = requests.get(f"{OPENF1_BASE}/sessions?year={year}&meeting_name={race}&session_type=Race", timeout=10).json()
-            if not sessions: return {}
+            if not sessions:
+                return _empty_telemetry_payload(
+                    f"No race telemetry found for {race} {year}. Please select another race."
+                )
             session_key = sessions[0]['session_key']
             
             drivers = requests.get(f"{OPENF1_BASE}/drivers?session_key={session_key}", timeout=10).json()
             driver_num = next((d['driver_number'] for d in drivers if d.get('name_acronym', '').upper() == driver.upper()), None)
-            if not driver_num: return {}
+            if not driver_num:
+                return _empty_telemetry_payload(
+                    f"Driver {driver} is not available for {race} {year}."
+                )
             
             laps = requests.get(f"{OPENF1_BASE}/laps?session_key={session_key}&driver_number={driver_num}&lap_number={lap_number}", timeout=10).json()
-            if not laps: return {}
+            if not laps:
+                return _empty_telemetry_payload(
+                    f"Lap {lap_number} telemetry is unavailable for {driver} at {race} {year}."
+                )
             lap_data = laps[0]
             
             duration = lap_data.get('lap_duration', 0)
@@ -465,7 +577,9 @@ def get_lap_telemetry(year: int, race: str, driver: str, lap_number: int) -> dic
             }
         except Exception as e:
             print(f"[OpenF1 telemetry error] {e}")
-            return {}
+            return _empty_telemetry_payload(
+                "Telemetry temporarily unavailable. Please try another completed race."
+            )
     else:
         try:
             race = RACE_NAME_MAP.get(race, race)
@@ -476,7 +590,9 @@ def get_lap_telemetry(year: int, race: str, driver: str, lap_number: int) -> dic
             lap = laps[laps['LapNumber'] == lap_number]
             
             if lap.empty:
-                return {}
+                return _empty_telemetry_payload(
+                    f"Lap {lap_number} telemetry is unavailable for {driver} at {race} {year}."
+                )
                 
             lap_data = lap.iloc[0]
             telemetry = lap.get_telemetry()
@@ -509,7 +625,9 @@ def get_lap_telemetry(year: int, race: str, driver: str, lap_number: int) -> dic
             }
         except Exception as e:
             print(f"[FastF1 Error] get_lap_telemetry: {e}")
-            return {}
+            return _empty_telemetry_payload(
+                "Telemetry temporarily unavailable. Please try another completed race."
+            )
 
 
 # ── Career Stats (Jolpica API) ────────────────────────────────────────────────

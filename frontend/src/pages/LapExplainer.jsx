@@ -8,6 +8,11 @@ import CustomDropdown from '../components/CustomDropdown';
 import { getAvailableRaces, getDrivers, getTelemetry } from '../services/api';
 import { getCircuitInfo } from '../utils/circuitData';
 import { useMode } from '../context/ModeContext';
+import { getLatestCompletedRace, getDefaultYear } from '../utils/currentRace';
+
+const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022'];
+const RESOLVED_DEFAULT_YEAR = YEAR_OPTIONS.includes(getDefaultYear()) ? getDefaultYear() : '2026';
+const RESOLVED_DEFAULT_RACE = getLatestCompletedRace(parseInt(RESOLVED_DEFAULT_YEAR));
 
 export default function LapExplainer() {
   const shouldReduceMotion = useReducedMotion();
@@ -17,10 +22,10 @@ export default function LapExplainer() {
 
   const [isPlaying, setIsPlaying] = useState(false);
   
-  const [year, setYear] = useState('2026');
-  const [gp, setGp] = useState('Abu Dhabi Grand Prix');
-  const [driver, setDriver] = useState('VER');
-  const [lap, setLap] = useState('15');
+  const [year, setYear] = useState(RESOLVED_DEFAULT_YEAR);
+  const [gp, setGp] = useState(RESOLVED_DEFAULT_RACE?.name || 'Japanese Grand Prix');
+  const [driver, setDriver] = useState('NOR');
+  const [lap, setLap] = useState('10');
   
   const [options, setOptions] = useState({ races: [], drivers: [] });
   const lapOptions = Array.from({length: 80}, (_, i) => String(i + 1));
@@ -28,6 +33,32 @@ export default function LapExplainer() {
   const [telemetry, setTelemetry] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const getErrorMessage = (errorText, raceName, seasonYear) => {
+    const normalizedError = String(errorText || '').toLowerCase();
+
+    if (normalizedError.includes('not happened yet') || normalizedError.includes('may be limited')) {
+      return {
+        title: "Race hasn't happened yet",
+        message: `${raceName} ${seasonYear} is scheduled but hasn't been run. Please select a recent completed race like Japanese GP or Bahrain GP.`,
+        suggestion: true,
+      };
+    }
+
+    if (normalizedError.includes('failed to load')) {
+      return {
+        title: 'Data loading failed',
+        message: 'Backend is starting up. Wait 30 seconds and try again.',
+        suggestion: false,
+      };
+    }
+
+    return {
+      title: 'Something went wrong',
+      message: errorText || 'Please try again',
+      suggestion: false,
+    };
+  };
 
   useEffect(() => {
     let active = true;
@@ -37,11 +68,21 @@ export default function LapExplainer() {
         const races = rRes.data.races || [];
         const drivers = dRes.data.drivers || [];
         setOptions({ races, drivers });
-        if (races.length && !races.includes(gp)) setGp(races[0]);
-        if (drivers.length && !drivers.find(d => d.code === driver)) setDriver(drivers[0].code);
+        if (races.length && !races.includes(gp)) {
+          const latestCompleted = getLatestCompletedRace(parseInt(year));
+          if (latestCompleted?.name && races.includes(latestCompleted.name)) {
+            setGp(latestCompleted.name);
+          } else {
+            setGp(races[races.length - 1]);
+          }
+        }
+        if (drivers.length && !drivers.find(d => d.code === driver)) {
+          const nor = drivers.find(d => d.code === 'NOR');
+          setDriver((nor || drivers[0]).code);
+        }
       }).catch(err => {
         if (!active) return;
-        setError(err.message === "RATE_LIMIT" ? "Rate limit reached. Please wait." : "Failed to load options");
+        setError(err.message === 'RATE_LIMIT' ? 'Rate limit reached. Please wait.' : 'FAILED TO LOAD OPTIONS');
       });
     return () => { active = false; };
   }, [year]);
@@ -55,13 +96,23 @@ export default function LapExplainer() {
     getTelemetry(year, gp, driver, lap)
       .then(res => {
         if (active) {
-          setTelemetry(res.data);
+          const payload = res.data || {};
+          setTelemetry(payload);
+          setError(payload.error || null);
           setLoading(false);
         }
       })
       .catch(err => {
         if (active) {
-          setError(err.message === "RATE_LIMIT" ? "Rate limit reached." : "Failed to fetch telemetry.");
+          if (err.message === 'RATE_LIMIT') {
+            setError('Rate limit reached.');
+          } else if (err.message === 'REQUEST_TIMEOUT' || err.message === 'SERVER_ERROR') {
+            setError('FAILED TO LOAD TELEMETRY');
+          } else if (err.message === 'NO_DATA') {
+            setError(`Telemetry data may be limited for ${gp} ${year}.`);
+          } else {
+            setError('Failed to fetch telemetry.');
+          }
           setTelemetry(null);
           setLoading(false);
         }
@@ -138,7 +189,7 @@ export default function LapExplainer() {
           
           <div className="flex flex-wrap gap-6">
             <div>
-              <CustomDropdown label="Season" value={year} options={['2026', '2025', '2024', '2023', '2022']} onChange={setYear} />
+              <CustomDropdown label="Season" value={year} options={YEAR_OPTIONS} onChange={setYear} />
               {parseInt(year) >= 2025 ? (
                 <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">✓ LIVE DATA (OPENF1)</p>
               ) : (
@@ -151,17 +202,49 @@ export default function LapExplainer() {
           </div>
         </div>
 
-        {error && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8 p-4 bg-red-900/20 border border-red-500/50 rounded flex flex-col gap-2 text-red-500">
-            <div className="flex items-center gap-3">
-              <AlertCircle size={20} />
-              <span className="font-['Space_Grotesk'] font-bold uppercase tracking-widest text-sm">{error}</span>
+        {error && (() => {
+          const errorInfo = getErrorMessage(error, gp, year);
+          return (
+            <div
+              style={{
+                padding: 16,
+                background: 'rgba(225,6,0,0.1)',
+                border: '1px solid rgba(225,6,0,0.3)',
+                borderRadius: 12,
+                marginBottom: 20,
+              }}
+            >
+              <p style={{ color: '#E10600', fontWeight: 700, marginBottom: 4 }}>
+                {errorInfo.title}
+              </p>
+              <p style={{ color: '#888', fontSize: 13 }}>
+                {errorInfo.message}
+              </p>
+              {errorInfo.suggestion && (
+                <button
+                  onClick={() => {
+                    setGp('Japanese Grand Prix');
+                    setYear('2026');
+                    setDriver('VER');
+                    setLap('10');
+                  }}
+                  style={{
+                    marginTop: 8,
+                    padding: '6px 14px',
+                    background: '#E10600',
+                    border: 'none',
+                    borderRadius: 100,
+                    color: 'white',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Try Japanese GP 2026 →
+                </button>
+              )}
             </div>
-            {parseInt(year) >= 2025 && (
-              <p className="text-xs ml-8 opacity-80">Telemetry for {year} may be limited. Try selecting 2024 for the most reliable historical data.</p>
-            )}
-          </motion.div>
-        )}
+          );
+        })()}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Track Map Visualization */}

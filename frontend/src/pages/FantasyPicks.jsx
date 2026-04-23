@@ -12,6 +12,12 @@ import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
 import { useMode } from '../context/ModeContext';
 import { getTeamColor } from '../utils/teamColors';
+import { getLatestCompletedRace, getNextUpcomingRace, getDefaultYear } from '../utils/currentRace';
+
+const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022'];
+const RESOLVED_DEFAULT_YEAR = YEAR_OPTIONS.includes(getDefaultYear()) ? getDefaultYear() : '2026';
+const RESOLVED_DEFAULT_UPCOMING = getNextUpcomingRace(parseInt(RESOLVED_DEFAULT_YEAR));
+const RESOLVED_DEFAULT_COMPLETED = getLatestCompletedRace(parseInt(RESOLVED_DEFAULT_YEAR));
 
 export default function FantasyPicks() {
   const shouldReduceMotion = useReducedMotion();
@@ -23,9 +29,13 @@ export default function FantasyPicks() {
   const [error, setError] = useState(null);
   const { containerVariants, itemVariants } = useStaggerChildren(0.1, 0.05);
 
-  const [season, setSeason] = useState('2026');
-  const [selectedRace, setSelectedRace] = useState('');
-  const [raceList, setRaceList] = useState([]);
+  const [season, setSeason] = useState(RESOLVED_DEFAULT_YEAR);
+  const [selectedRace, setSelectedRace] = useState(
+    RESOLVED_DEFAULT_UPCOMING?.name || RESOLVED_DEFAULT_COMPLETED?.name || 'Japanese Grand Prix'
+  );
+  const [raceList, setRaceList] = useState([
+    RESOLVED_DEFAULT_UPCOMING?.name || RESOLVED_DEFAULT_COMPLETED?.name || 'Japanese Grand Prix'
+  ]);
 
   const [drivers, setDrivers] = useState([]);
   const [constructor, setConstructor] = useState(null);
@@ -148,15 +158,38 @@ export default function FantasyPicks() {
   // Fetch race list
   useEffect(() => {
     const fetchRaces = async () => {
+      const upcomingRace = getNextUpcomingRace(parseInt(season));
+      const completedRace = getLatestCompletedRace(parseInt(season));
+
       try {
         const res = await getAvailableRaces(parseInt(season));
         if (res.data.races?.length) {
-          setRaceList(res.data.races);
-          setSelectedRace(res.data.races[res.data.races.length - 1]); // default to latest
+          const mergedRaces = Array.from(
+            new Set([
+              ...res.data.races,
+              ...(upcomingRace?.name ? [upcomingRace.name] : []),
+            ])
+          );
+
+          setRaceList(mergedRaces);
+          setSelectedRace((prev) => {
+            if (prev && mergedRaces.includes(prev)) return prev;
+            if (upcomingRace?.name && mergedRaces.includes(upcomingRace.name)) return upcomingRace.name;
+            if (completedRace?.name && mergedRaces.includes(completedRace.name)) return completedRace.name;
+            return mergedRaces[mergedRaces.length - 1] || 'Japanese Grand Prix';
+          });
         }
       } catch {
-        setRaceList(['Monaco Grand Prix', 'British Grand Prix', 'Italian Grand Prix']);
-        setSelectedRace('Monaco Grand Prix');
+        const fallback = Array.from(
+          new Set([
+            upcomingRace?.name,
+            completedRace?.name,
+            'Japanese Grand Prix',
+            'Bahrain Grand Prix',
+          ].filter(Boolean))
+        );
+        setRaceList(fallback);
+        setSelectedRace(fallback[0] || 'Japanese Grand Prix');
       }
     };
     fetchRaces();
@@ -262,7 +295,7 @@ export default function FantasyPicks() {
         {/* Race selector */}
         <div className="flex flex-wrap gap-6 mb-10">
           <div className="w-32">
-            <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023', '2022']} onChange={setSeason} />
+            <CustomDropdown label="Season" value={season} options={YEAR_OPTIONS} onChange={setSeason} />
             {parseInt(season) >= 2025 ? (
               <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">✓ LIVE DATA (OPENF1)</p>
             ) : (

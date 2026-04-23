@@ -9,6 +9,10 @@ import { DRIVER_DATA } from '../utils/teamColors';
 import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
 import { useMode } from '../context/ModeContext';
+import { getDefaultYear } from '../utils/currentRace';
+
+const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022'];
+const RESOLVED_DEFAULT_YEAR = YEAR_OPTIONS.includes(getDefaultYear()) ? getDefaultYear() : '2026';
 
 const TEAM_GRADIENTS = {
   'Mercedes':          'linear-gradient(180deg, #27F4D2 0%, #0a0a0a 60%)',
@@ -37,9 +41,9 @@ export default function RivalryTracker() {
   const dur = (d) => (shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d);
   const { isBeginnerMode } = useMode();
 
-  const [season, setSeason] = useState('2026');
-  const [driver1, setDriver1] = useState('HAM');
-  const [driver2, setDriver2] = useState('RUS');
+  const [season, setSeason] = useState(RESOLVED_DEFAULT_YEAR);
+  const [driver1, setDriver1] = useState('NOR');
+  const [driver2, setDriver2] = useState('VER');
   const [driverList, setDriverList] = useState([]);
 
   const [loading, setLoading] = useState(true);
@@ -162,7 +166,7 @@ export default function RivalryTracker() {
         <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-6">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto">
             <div className="col-span-1">
-              <CustomDropdown label="Season" value={season} options={['2026', '2025', '2024', '2023', '2022']} onChange={setSeason} />
+              <CustomDropdown label="Season" value={season} options={YEAR_OPTIONS} onChange={setSeason} />
               {parseInt(season) >= 2025 ? (
                 <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">✓ LIVE DATA</p>
               ) : (
