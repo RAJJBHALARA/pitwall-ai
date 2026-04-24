@@ -5,34 +5,50 @@ import { useAnimatedCounter } from '../utils/useAnimatedCounter';
 import CustomDropdown from '../components/CustomDropdown';
 import PageTransition from '../components/PageTransition';
 import { getRivalryStats, getDrivers } from '../services/api';
-import { DRIVER_DATA } from '../utils/teamColors';
 import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
 import { useMode } from '../context/ModeContext';
 import { getDefaultYear } from '../utils/currentRace';
 
-const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022'];
+const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022', '2021'];
 const RESOLVED_DEFAULT_YEAR = YEAR_OPTIONS.includes(getDefaultYear()) ? getDefaultYear() : '2026';
 
 const TEAM_GRADIENTS = {
-  'Mercedes':          'linear-gradient(180deg, #27F4D2 0%, #0a0a0a 60%)',
-  'Red Bull Racing':   'linear-gradient(180deg, #3671C6 0%, #0a0a0a 60%)',
-  'Ferrari':           'linear-gradient(180deg, #E8002D 0%, #0a0a0a 60%)',
-  'McLaren':          'linear-gradient(180deg, #FF8000 0%, #0a0a0a 60%)',
-  'Aston Martin':     'linear-gradient(180deg, #358C75 0%, #0a0a0a 60%)',
-  'Alpine':            'linear-gradient(180deg, #FF87BC 0%, #0a0a0a 60%)',
-  'Williams':          'linear-gradient(180deg, #37BEDD 0%, #0a0a0a 60%)',
-  'Haas':              'linear-gradient(180deg, #B6BABD 0%, #0a0a0a 60%)',
-  'Kick Sauber':      'linear-gradient(180deg, #52E252 0%, #0a0a0a 60%)',
-  'RB':                'linear-gradient(180deg, #6692FF 0%, #0a0a0a 60%)',
+  Mercedes: 'linear-gradient(180deg, #27F4D2 0%, #0a0a0a 60%)',
+  'Red Bull Racing': 'linear-gradient(180deg, #3671C6 0%, #0a0a0a 60%)',
+  Ferrari: 'linear-gradient(180deg, #E8002D 0%, #0a0a0a 60%)',
+  McLaren: 'linear-gradient(180deg, #FF8000 0%, #0a0a0a 60%)',
+  'Aston Martin': 'linear-gradient(180deg, #358C75 0%, #0a0a0a 60%)',
+  Alpine: 'linear-gradient(180deg, #FF87BC 0%, #0a0a0a 60%)',
+  Williams: 'linear-gradient(180deg, #37BEDD 0%, #0a0a0a 60%)',
+  Haas: 'linear-gradient(180deg, #B6BABD 0%, #0a0a0a 60%)',
+  'Kick Sauber': 'linear-gradient(180deg, #52E252 0%, #0a0a0a 60%)',
+  RB: 'linear-gradient(180deg, #6692FF 0%, #0a0a0a 60%)',
 };
 
 const DRIVER_TEAMS = {
-  VER:'Red Bull Racing', NOR:'McLaren', PIA:'McLaren', LEC:'Ferrari',
-  HAM:'Ferrari', RUS:'Mercedes', SAI:'Williams', ALO:'Aston Martin',
-  STR:'Aston Martin', OCO:'Haas', GAS:'Alpine', TSU:'RB',
-  ALB:'Williams', HUL:'Kick Sauber', MAG:'Haas', BOT:'Kick Sauber',
-  ANT:'Mercedes', BEA:'Haas', LAW:'RB', DOO:'Alpine', HAD:'RB', COL:'Alpine',
+  VER: 'Red Bull Racing',
+  NOR: 'McLaren',
+  PIA: 'McLaren',
+  LEC: 'Ferrari',
+  HAM: 'Ferrari',
+  RUS: 'Mercedes',
+  SAI: 'Williams',
+  ALO: 'Aston Martin',
+  STR: 'Aston Martin',
+  OCO: 'Haas',
+  GAS: 'Alpine',
+  TSU: 'RB',
+  ALB: 'Williams',
+  HUL: 'Kick Sauber',
+  MAG: 'Haas',
+  BOT: 'Kick Sauber',
+  ANT: 'Mercedes',
+  BEA: 'Haas',
+  LAW: 'RB',
+  DOO: 'Alpine',
+  HAD: 'RB',
+  COL: 'Alpine',
 };
 
 export default function RivalryTracker() {
@@ -40,56 +56,69 @@ export default function RivalryTracker() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => (shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d);
   const { isBeginnerMode } = useMode();
+  const controlLabelStyle = {
+    fontSize: 11,
+    color: '#666',
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    display: 'block',
+    marginBottom: 6,
+    fontWeight: 700,
+  };
 
   const [season, setSeason] = useState(RESOLVED_DEFAULT_YEAR);
   const [driver1, setDriver1] = useState('NOR');
   const [driver2, setDriver2] = useState('VER');
   const [driverList, setDriverList] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [rivalryData, setRivalryData] = useState(null);
   const [aiText, setAiText] = useState('');
 
-  // Fetch driver list for dropdowns
   useEffect(() => {
     const fetchDrivers = async () => {
       try {
-        const res = await getDrivers(parseInt(season));
+        const res = await getDrivers(parseInt(season, 10));
         if (res.data.drivers) {
-          setDriverList(res.data.drivers.map(d => d.code || d.abbreviation || d));
+          setDriverList(res.data.drivers.map((d) => d.code || d.abbreviation || d));
         }
-      } catch { /* keep defaults */ }
+      } catch {
+        // Keep defaults when driver lookup fails.
+      }
     };
+
     fetchDrivers();
   }, [season]);
 
-  // Fetch rivalry data
   useEffect(() => {
     if (driver1 === driver2) return;
+
     const fetchRivalry = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await getRivalryStats(parseInt(season), driver1, driver2);
-        setRivalryData(res.data.stats);
+        const res = await getRivalryStats(parseInt(season, 10), driver1, driver2);
+        setRivalryData(res.data.stats || null);
         setAiText(res.data.aiAnalysis || '');
       } catch (err) {
         setError(
-          err.message === 'RATE_LIMIT' ? 'Too many requests. Wait 1 minute.' :
-          err.message === 'AUTH_ERROR' ? 'Authentication failed.' :
-          err.message === 'NO_DATA' ? 'No rivalry data available for these drivers.' :
-          'Something went wrong. Try again.'
+          err.message === 'RATE_LIMIT'
+            ? 'Too many requests. Wait 1 minute.'
+            : err.message === 'AUTH_ERROR'
+              ? 'Authentication failed.'
+              : err.message === 'NO_DATA'
+                ? 'No rivalry data available for these drivers.'
+                : 'Something went wrong. Try again.'
         );
+        setAiText('');
       } finally {
         setLoading(false);
       }
     };
+
     fetchRivalry();
   }, [season, driver1, driver2]);
 
-  // Animated counters — use real data when available, fallback to 0
   const q1 = rivalryData?.qualifying?.[driver1] ?? 0;
   const q2 = rivalryData?.qualifying?.[driver2] ?? 0;
   const w1 = rivalryData?.race_wins?.[driver1] ?? 0;
@@ -106,18 +135,8 @@ export default function RivalryTracker() {
 
   const isCorrupted = (text) => {
     if (!text) return true;
-
-    if (/(.)\1{2,}/.test(text)) return true;
-
-    const doubledAll = (text.match(/([a-z])\1/gi) || []).length;
-    if (doubledAll > 4) return true;
-
-    const weirdLongWords = (text.match(/[A-Za-z']{10,}/g) || []).filter(
-      (w) => /([aeiou])\1|([bcdfghjklmnpqrstvwxyz])\1/i.test(w)
-    );
-    if (weirdLongWords.length > 0) return true;
-
-    return false;
+    const doubled = (text.match(/([bcdfghjklmnpqrstvwxyz])\1/gi) || []).length;
+    return doubled > 4;
   };
 
   const calcPercent = (a, b) => {
@@ -127,7 +146,7 @@ export default function RivalryTracker() {
   };
 
   const BEGINNER_LABELS = {
-    'Qualifying': 'Who Starts Ahead?',
+    Qualifying: 'Who Starts Ahead?',
     'Race Wins': 'Who Won More Races?',
     'Avg. Pace Gap': 'Speed Difference',
     'Championship Points': 'Total Score',
@@ -140,48 +159,86 @@ export default function RivalryTracker() {
     { label: 'Championship Points', v1: points1, v2: points2, p1: calcPercent(p1, p2)[0], p2: calcPercent(p1, p2)[1] },
   ];
 
-  // Available drivers for dropdowns
-  const driverOptions = driverList.length > 0 ? driverList : ['VER', 'NOR', 'LEC', 'SAI', 'HAM', 'RUS', 'PIA', 'ALO'];
+  const driverOptions =
+    driverList.length > 0 ? driverList : ['VER', 'NOR', 'LEC', 'SAI', 'HAM', 'RUS', 'PIA', 'ALO'];
 
   return (
     <PageTransition>
       <div className="pt-8 pb-28 px-4 max-w-4xl mx-auto min-h-screen w-full">
-        <div className="flex flex-col mb-8 gap-2">
-          <motion.h1 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="font-['Space_Grotesk'] font-bold tracking-[-0.02em] uppercase text-3xl text-white"
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            marginBottom: 28,
+            paddingTop: 32,
+          }}
+        >
+          <h1
+            style={{
+              fontSize: 'clamp(28px, 4vw, 48px)',
+              fontWeight: 900,
+              color: 'white',
+              textTransform: 'uppercase',
+              letterSpacing: '0.02em',
+              margin: 0,
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
           >
-            <span className="text-[#e10600] italic mr-3">
-              {isBeginnerMode ? 'DRIVER' : 'RIVALRY'}
-            </span>
-            {isBeginnerMode ? 'SHOWDOWN' : 'HUB'}
-          </motion.h1>
-          {isBeginnerMode && (
-            <p className="text-sm text-[#999] font-['Inter']">Pick two drivers and see who's been better this season 🏆</p>
-          )}
+            <span style={{ color: '#E10600', fontStyle: 'italic' }}>RIVALRY</span>{' '}HUB
+          </h1>
+          <p
+            style={{
+              fontSize: 14,
+              color: '#888888',
+              margin: 0,
+            }}
+          >
+            Pick two drivers and see who's been better this season 🏆
+          </p>
         </div>
 
-        {/* Year + Driver Selectors */}
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto">
-            <div className="col-span-1">
-              <CustomDropdown label="Season" value={season} options={YEAR_OPTIONS} onChange={setSeason} />
-              {parseInt(season) >= 2025 ? (
-                <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">✓ LIVE DATA</p>
+        <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-8 gap-6">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, minmax(0, 1fr))',
+              gap: 12,
+              alignItems: 'end',
+              width: '100%',
+            }}
+          >
+            <div>
+              <label style={controlLabelStyle}>SEASON</label>
+              <CustomDropdown value={season} options={YEAR_OPTIONS} onChange={setSeason} />
+              {parseInt(season, 10) >= 2025 ? (
+                <p className="text-[10px] text-[#00D2BE] mt-1 font-bold">LIVE DATA (OPENF1)</p>
               ) : (
-                <p className="text-[10px] text-[#666] mt-1">HISTORICAL</p>
+                <p className="text-[10px] text-[#666] mt-1">Historical data (FastF1)</p>
               )}
             </div>
-            <div className="col-span-1">
-              <CustomDropdown label="Driver 1" value={driver1} options={driverOptions.filter(d => d !== driver2)} onChange={setDriver1} />
+
+            <div>
+              <label style={controlLabelStyle}>DRIVER 1</label>
+              <CustomDropdown
+                value={driver1}
+                options={driverOptions.filter((d) => d !== driver2)}
+                onChange={setDriver1}
+              />
             </div>
-            <div className="col-span-2 md:col-span-1">
-              <CustomDropdown label="Driver 2" value={driver2} options={driverOptions.filter(d => d !== driver1)} onChange={setDriver2} />
+
+            <div style={{ gridColumn: isMobile ? '1 / -1' : 'auto' }}>
+              <label style={controlLabelStyle}>DRIVER 2</label>
+              <CustomDropdown
+                value={driver2}
+                options={driverOptions.filter((d) => d !== driver1)}
+                onChange={setDriver2}
+              />
             </div>
           </div>
+
           <div className="flex gap-4 self-end md:self-auto">
-            <motion.button 
+            <motion.button
               {...(!isMobile && { whileHover: { scale: 1.1 } })}
               whileTap={{ scale: 0.9 }}
               style={{
@@ -193,7 +250,8 @@ export default function RivalryTracker() {
             >
               <Share2 className="w-5 h-5" />
             </motion.button>
-            <motion.button 
+
+            <motion.button
               {...(!isMobile && { whileHover: { scale: 1.1 } })}
               whileTap={{ scale: 0.9 }}
               className="w-12 h-12 flex items-center justify-center bg-[#e10600] rounded-full text-white shadow-[0_0_15px_rgba(225,6,0,0.4)] hover:bg-[#c00500] transition-colors"
@@ -203,21 +261,22 @@ export default function RivalryTracker() {
           </div>
         </div>
 
-        {/* Error Banner */}
         {error && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8 p-4 bg-red-900/20 border border-red-500/50 rounded flex items-center gap-3 text-red-500">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-8 p-4 bg-red-900/20 border border-red-500/50 rounded flex items-center gap-3 text-red-500"
+          >
             <AlertCircle size={20} />
             <span className="font-['Space_Grotesk'] font-bold uppercase tracking-widest text-sm">{error}</span>
           </motion.div>
         )}
 
-        {/* Rivalry Head-to-Head Hero */}
         <div className="relative grid grid-cols-2 gap-px bg-[#5e3f3a]/20 rounded-2xl overflow-hidden mb-12 shadow-2xl">
-          {/* Driver 1 */}
-          <motion.div 
+          <motion.div
             initial={{ x: -80, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: dur(0.6), ease: "easeOut" }}
+            transition={{ duration: dur(0.6), ease: 'easeOut' }}
             className="p-6 pb-0 flex flex-col items-center relative overflow-hidden"
             style={{ background: TEAM_GRADIENTS[DRIVER_TEAMS[driver1]] || '#1c1b1b' }}
           >
@@ -233,11 +292,10 @@ export default function RivalryTracker() {
             </div>
           </motion.div>
 
-          {/* Driver 2 */}
-          <motion.div 
+          <motion.div
             initial={{ x: 80, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: dur(0.6), ease: "easeOut" }}
+            transition={{ duration: dur(0.6), ease: 'easeOut' }}
             className="p-6 pb-0 flex flex-col items-center relative overflow-hidden"
             style={{ background: TEAM_GRADIENTS[DRIVER_TEAMS[driver2]] || '#1c1b1b' }}
           >
@@ -253,11 +311,10 @@ export default function RivalryTracker() {
             </div>
           </motion.div>
 
-          {/* VS Badge */}
-          <motion.div 
+          <motion.div
             initial={{ scale: 0, rotate: -15 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+            transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
           >
             <div className="bg-[#e10600] text-white font-['Space_Grotesk'] font-black italic px-6 py-2 text-xl skew-x-[-12deg] shadow-[0_10px_30px_rgba(225,6,0,0.5)]">
@@ -266,9 +323,8 @@ export default function RivalryTracker() {
           </motion.div>
         </div>
 
-        {/* Comparative Stats Grid */}
         <section className="space-y-10">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
@@ -281,9 +337,13 @@ export default function RivalryTracker() {
 
           {loading ? (
             <div className="space-y-8 animate-pulse">
-              {[1,2,3,4].map(i => (
+              {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="space-y-3">
-                  <div className="flex justify-between"><div className="h-6 w-12 bg-white/5 rounded" /><div className="h-4 w-24 bg-white/5 rounded" /><div className="h-6 w-12 bg-white/5 rounded" /></div>
+                  <div className="flex justify-between">
+                    <div className="h-6 w-12 bg-white/5 rounded" />
+                    <div className="h-4 w-24 bg-white/5 rounded" />
+                    <div className="h-6 w-12 bg-white/5 rounded" />
+                  </div>
                   <div className="h-2 w-full bg-white/5 rounded-full" />
                 </div>
               ))}
@@ -299,7 +359,7 @@ export default function RivalryTracker() {
                   <span className="font-['Space_Grotesk'] font-bold text-3xl text-white">{stat.v2}</span>
                 </div>
                 <div className="flex h-2 w-full bg-[#353534] rounded-full overflow-hidden gap-1 shadow-inner">
-                  <motion.div 
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: stat.p1 }}
                     transition={{ duration: dur(0.8), delay: i * 0.1 }}
@@ -307,7 +367,7 @@ export default function RivalryTracker() {
                   />
                   <div className="h-full bg-[#2a2a2a] rounded-full flex-1"></div>
                   {!stat.isSpecial && (
-                     <motion.div 
+                    <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: stat.p2 }}
                       transition={{ duration: dur(0.8), delay: i * 0.1 }}
@@ -320,8 +380,7 @@ export default function RivalryTracker() {
           )}
         </section>
 
-        {/* Insights Card */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -350,9 +409,7 @@ export default function RivalryTracker() {
               <div className="h-4 w-1/2 bg-white/5 rounded" />
             </div>
           ) : aiText && !isCorrupted(aiText) ? (
-            <p className="text-[#e5e2e1] text-lg leading-relaxed relative z-10 font-['Inter']">
-              {aiText || 'No AI analysis available for this matchup.'}
-            </p>
+            <p className="text-[#e5e2e1] text-lg leading-relaxed relative z-10 font-['Inter']">{aiText}</p>
           ) : aiText && isCorrupted(aiText) ? (
             <p
               className="text-lg leading-relaxed relative z-10 font-['Inter']"
@@ -369,7 +426,6 @@ export default function RivalryTracker() {
             </p>
           )}
         </motion.div>
-
       </div>
     </PageTransition>
   );

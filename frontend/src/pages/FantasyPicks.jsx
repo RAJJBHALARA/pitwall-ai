@@ -14,12 +14,13 @@ import { useMode } from '../context/ModeContext';
 import { getTeamColor } from '../utils/teamColors';
 import { getLatestCompletedRace, getNextUpcomingRace, getDefaultYear } from '../utils/currentRace';
 
-const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022'];
+const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022', '2021'];
 const RESOLVED_DEFAULT_YEAR = YEAR_OPTIONS.includes(getDefaultYear()) ? getDefaultYear() : '2026';
 const RESOLVED_DEFAULT_UPCOMING = getNextUpcomingRace(parseInt(RESOLVED_DEFAULT_YEAR));
 const RESOLVED_DEFAULT_COMPLETED = getLatestCompletedRace(parseInt(RESOLVED_DEFAULT_YEAR));
 
 export default function FantasyPicks() {
+  const MAX_RETRIES = 3;
   const shouldReduceMotion = useReducedMotion();
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const dur = (d) => (shouldReduceMotion ? 0 : isMobile ? d * 0.7 : d);
@@ -252,8 +253,9 @@ export default function FantasyPicks() {
         setIsLoading(false);
       } catch (err) {
         if (cancelled) return;
-        if (retryCount < 2) {
+        if (retryCount < MAX_RETRIES) {
           setError('RETRYING');
+          setRetryAttempt(retryCount + 1);
           retryTimer = setTimeout(() => {
             if (!cancelled) fetchFantasyPicks(retryCount + 1);
           }, 8000);
@@ -321,7 +323,7 @@ export default function FantasyPicks() {
               </span>
             </div>
             <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-300/80">
-              Attempt {retryAttempt + 1}/3
+              Retrying... ({retryAttempt}/{MAX_RETRIES})
             </span>
           </motion.div>
         )}

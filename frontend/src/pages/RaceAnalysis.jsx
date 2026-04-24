@@ -14,7 +14,7 @@ import { useMode } from '../context/ModeContext';
 import ShareModal from '../components/ShareModal';
 import { getLatestCompletedRace, getDefaultYear } from '../utils/currentRace';
 
-const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022'];
+const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022', '2021'];
 const RESOLVED_DEFAULT_YEAR = YEAR_OPTIONS.includes(getDefaultYear()) ? getDefaultYear() : '2026';
 const RESOLVED_DEFAULT_RACE = getLatestCompletedRace(parseInt(RESOLVED_DEFAULT_YEAR));
 
@@ -42,6 +42,7 @@ export default function RaceAnalysis() {
   const [aiInsight, setAiInsight] = useState(null);
   const { isBeginnerMode } = useMode();
   const [shareOpen, setShareOpen] = useState(false);
+  const isLiveSeason = parseInt(season, 10) >= 2025;
 
   useEffect(() => {
     let active = true;
@@ -158,11 +159,17 @@ export default function RaceAnalysis() {
               ↗ SHARE
             </motion.button>
             <motion.span
-              animate={{ boxShadow: shouldReduceMotion ? 'none' : ['0 0 0px #01d2be', '0 0 10px #01d2be', '0 0 0px #01d2be'] }}
+              animate={{
+                boxShadow: shouldReduceMotion || !isLiveSeason
+                  ? 'none'
+                  : ['0 0 0px #01d2be', '0 0 10px #01d2be', '0 0 0px #01d2be']
+              }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="text-[10px] font-bold text-[#47efda] uppercase tracking-widest bg-[#01d2be]/10 px-3 py-1.5 rounded"
+              className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded ${
+                isLiveSeason ? 'text-[#47efda] bg-[#01d2be]/10' : 'text-[#999999] bg-white/5'
+              }`}
             >
-              Live Data
+              {isLiveSeason ? 'LIVE DATA (OPENF1)' : 'Historical data (FastF1)'}
             </motion.span>
           </div>
         </motion.div>

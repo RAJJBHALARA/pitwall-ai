@@ -6,8 +6,13 @@ export default function Footer() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('https://api.github.com/repos/RAJJBHALARA/Box-Box')
-      .then((r) => r.json())
+    fetch('https://api.github.com/repos/RAJJBHALARA/Box-Box', {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error('GitHub API failed');
+        return r.json();
+      })
       .then((d) => {
         if (!cancelled && typeof d?.stargazers_count === 'number') {
           setStars(d.stargazers_count);
@@ -33,7 +38,7 @@ export default function Footer() {
       }}
     >
       <div style={{ color: '#444', fontSize: 13 }}>
-        © 2025 BoxBox · Built for F1 fans 🏎️
+        © 2026 BoxBox · Built for F1 fans
       </div>
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>

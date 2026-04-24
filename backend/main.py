@@ -131,7 +131,7 @@ async def fetch_rivalry_api(request: Request, year: int, driver1: str, driver2: 
         raise HTTPException(status_code=404, detail="No rivalry data available.")
     
     try:
-        ai_analysis = await asyncio.to_thread(get_rivalry_analysis, stats, driver1, driver2)
+        ai_analysis = await asyncio.to_thread(get_rivalry_analysis, stats, driver1, driver2, year)
     except Exception:
         ai_analysis = ""
     

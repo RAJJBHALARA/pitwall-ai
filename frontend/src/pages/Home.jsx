@@ -192,8 +192,13 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('https://api.github.com/repos/RAJJBHALARA/Box-Box')
-      .then((r) => r.json())
+    fetch('https://api.github.com/repos/RAJJBHALARA/Box-Box', {
+      headers: { Accept: 'application/vnd.github+json' }
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error('GitHub API failed');
+        return r.json();
+      })
       .then((d) => {
         if (!cancelled && typeof d?.stargazers_count === 'number') {
           setStars(d.stargazers_count);

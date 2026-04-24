@@ -28,24 +28,17 @@ generation_config = (
     genai.GenerationConfig(
         temperature=0.1,
         top_p=0.8,
-        top_k=10,
-        max_output_tokens=200,
-        candidate_count=1,
+        top_k=20,
+        max_output_tokens=250,
     )
     if GENAI_AVAILABLE
-    else {
-        "temperature": 0.1,
-        "top_p": 0.8,
-        "top_k": 10,
-        "max_output_tokens": 200,
-        "candidate_count": 1,
-    }
+    else None
 )
 model = None
 if AI_ENABLED:
     try:
         model = genai.GenerativeModel(
-            "gemini-1.5-flash",
+            model_name="gemini-1.5-pro",
             generation_config=generation_config
         )
     except Exception as e:
@@ -58,27 +51,30 @@ def _get_model(model_name: str):
     if model_name in _MODEL_CACHE:
         return _MODEL_CACHE[model_name]
     _MODEL_CACHE[model_name] = genai.GenerativeModel(
-        model_name,
+        model_name=model_name,
         generation_config=generation_config
     )
     return _MODEL_CACHE[model_name]
 
 
-def _generate_text(prompt: str) -> str:
+def _generate_text(prompt: str, override_generation_config=None, preferred_models=None) -> str:
     """Generate text with model fallbacks to avoid hard failures when one model is unavailable."""
     if not AI_ENABLED:
         return ""
 
-    preferred = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    preferred = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
     candidate_models = []
-    for name in [preferred, "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash"]:
+    for name in (preferred_models or [preferred, "gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.5-flash"]):
         if name not in candidate_models:
             candidate_models.append(name)
 
     for name in candidate_models:
         try:
-            active_model = model if name == "gemini-1.5-flash" and model else _get_model(name)
-            response = active_model.generate_content(prompt)
+            active_model = model if name == "gemini-1.5-pro" and model else _get_model(name)
+            if override_generation_config is not None:
+                response = active_model.generate_content(prompt, generation_config=override_generation_config)
+            else:
+                response = active_model.generate_content(prompt)
             text = (getattr(response, "text", "") or "").strip()
             if text:
                 return text
@@ -91,27 +87,27 @@ def _generate_text(prompt: str) -> str:
 
 def _looks_like_two_sentences(text: str) -> bool:
     sentence_count = len(re.findall(r'[.!?]+', text or ""))
-    return sentence_count >= 2
+    return sentence_count == 2
 
 
-def is_clean_text(text: str) -> bool:
+def is_clean_text(text: str, min_length: int = 20) -> bool:
+    text = (text or "").strip()
     if not text:
         return False
-    if len(text.strip()) < 15:
+    if len(text) < min_length:
         return False
-    if not text.strip()[0].isupper():
+    if not text[0].isupper():
         return False
-    
-    # Detect doubled chars (main corruption sign)
-    # e.g. "wwtth" "ooitss" "rivallr"
-    doubled = re.findall(r'([a-z])\1', text, re.IGNORECASE)
-    if len(doubled) > 4:
+    if re.search(r'(.)\1{2,}', text):
         return False
-    
-    # Detect number+letter combos (corruption)
-    if re.search(r'\d{2}[a-z]{2}', text):
+
+    doubled_pairs = re.findall(r'([bcdfghjklmnpqrstvwxyz])\1', text, re.IGNORECASE)
+    if len(doubled_pairs) > 4:
         return False
-        
+
+    if re.search(r'\d+[a-z]{2,}', text, re.IGNORECASE):
+        return False
+
     return True
 
 
@@ -356,7 +352,7 @@ def _is_valid_text(text: str) -> bool:
     """Validate AI-generated text for typos and corruption."""
     text = (text or "").strip()
 
-    if not is_clean_text(text) or len(text) < 30:
+    if not is_clean_text(text, min_length=30):
         return False
 
     bad_patterns = [
@@ -453,15 +449,7 @@ def get_fantasy_picks(race: str, form_data: dict) -> dict:
         return _build_fantasy_fallback(race, form_data)
     except Exception as e:
         print(f"[Fantasy AI Error] {e}")
-        return {
-            "drivers": [],
-            "constructor": {
-                "name": "McLaren",
-                "reasoning": "Strong recent form"
-            },
-            "key_insight": "Based on recent performance data",
-            "drivers_to_avoid": []
-        }
+        return _build_fantasy_fallback(race, form_data)
 
 def explain_lap(telemetry: dict, driver: str, race: str, lap: int) -> str:
     prompt = f"""You are an elite F1 telemetry expert delivering a professional lap breakdown.
@@ -499,7 +487,7 @@ STRICT RULES — follow every one:
         print(f"[Gemini Lap Error] {e}")
         return _build_lap_fallback(telemetry, driver, race, lap)
 
-def get_rivalry_analysis(stats: dict, d1: str, d2: str) -> str:
+def _legacy_get_rivalry_analysis(stats: dict, d1: str, d2: str) -> str:
     prompt = f"""
     You are a sharp F1 analyst known for bold opinions.
     
@@ -536,6 +524,87 @@ def get_rivalry_analysis(stats: dict, d1: str, d2: str) -> str:
     except Exception as e:
         print(f"[Gemini Rivalry Error] {e}")
         return _build_rivalry_fallback(stats, d1, d2)
+
+def get_rivalry_analysis(stats: dict, d1: str, d2: str, year: int | None = None) -> str:
+    print("[Rivalry AI] Called with:")
+    print(f"  d1={d1}, d2={d2}, year={year}")
+    print(f"  stats={stats}")
+
+    if not stats:
+        return f"No statistics available for this {d1} vs {d2} matchup."
+
+    def get_stat(key, alt_key=None):
+        if not isinstance(stats, dict):
+            return {}
+        return stats.get(key, stats.get(alt_key, {}))
+
+    def extract_matchup_values(stat_block):
+        if not isinstance(stat_block, dict):
+            return 0, 0
+        return (
+            _to_int(stat_block.get(d1, stat_block.get('d1', 0)), 0),
+            _to_int(stat_block.get(d2, stat_block.get('d2', 0)), 0),
+        )
+
+    quali = get_stat('qualifying', 'qualifying_wins')
+    wins = get_stat('race_wins', 'wins')
+    points = get_stat('points', 'championship_points')
+
+    d1_q, d2_q = extract_matchup_values(quali)
+    d1_w, d2_w = extract_matchup_values(wins)
+    d1_p, d2_p = extract_matchup_values(points)
+    season_label = year or 2026
+
+    prompt = f"""You are an F1 analyst.
+Write exactly 2 sentences about this {d1} vs {d2} rivalry in {season_label}.
+
+Facts:
+- Qualifying: {d1} {d1_q} vs {d2} {d2_q}
+- Race wins: {d1} {d1_w} vs {d2} {d2_w}
+- Points: {d1} {d1_p} vs {d2} {d2_p}
+
+Rules:
+- Start sentence 1 with the leading driver's name
+- Sentence 2 must predict future rivalry
+- Perfect grammar, no abbreviations
+- Maximum 50 words total
+- Plain text only"""
+
+    rivalry_generation_config = {
+        "temperature": 0.05,
+        "top_p": 0.7,
+        "max_output_tokens": 120,
+    }
+
+    try:
+        for attempt in range(3):
+            attempt_prompt = prompt
+            if attempt > 0:
+                attempt_prompt += "\nPREVIOUS ATTEMPT WAS INVALID. Rewrite both sentences in perfect English with no doubled letters."
+
+            text = _generate_text(
+                attempt_prompt,
+                override_generation_config=rivalry_generation_config,
+                preferred_models=["gemini-1.5-pro"],
+            )
+            text = " ".join((text or "").replace("  ", " ").split())
+
+            if is_clean_text(text, min_length=20) and _looks_like_two_sentences(text):
+                return text
+
+            print(f"[Rivalry Attempt {attempt + 1}] Bad text detected, retrying...")
+    except Exception as e:
+        print(f"[Gemini error] {e}")
+
+    leader = d1 if d1_q >= d2_q else d2
+    trailer = d2 if leader == d1 else d1
+    leader_q = d1_q if leader == d1 else d2_q
+    trailer_q = d2_q if leader == d1 else d1_q
+
+    return (
+        f"{leader} leads this {season_label} rivalry with a {leader_q}-{trailer_q} qualifying advantage so far. "
+        f"{trailer} will need to find more single-lap pace to challenge in the remaining races this season."
+    )
 
 @functools.lru_cache(maxsize=32)
 def get_circuit_insight(circuit: str) -> str:
@@ -596,7 +665,7 @@ Plain text only. No markdown or formatting."""
                 attempt_prompt += "\nPREVIOUS ATTEMPT HAD TYPOS. Rewrite both sentences in perfect English."
 
             text = (_generate_text(attempt_prompt) or "").strip()
-            if _is_valid_text(text) and is_clean_text(text):
+            if _is_valid_text(text) and is_clean_text(text) and _looks_like_two_sentences(text):
                 return text
 
             print(f"[Career Attempt {attempt + 1}] Bad text detected, retrying...")

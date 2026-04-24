@@ -10,7 +10,7 @@ import { getCircuitInfo } from '../utils/circuitData';
 import { useMode } from '../context/ModeContext';
 import { getLatestCompletedRace, getDefaultYear } from '../utils/currentRace';
 
-const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022'];
+const YEAR_OPTIONS = ['2026', '2025', '2024', '2023', '2022', '2021'];
 const RESOLVED_DEFAULT_YEAR = YEAR_OPTIONS.includes(getDefaultYear()) ? getDefaultYear() : '2026';
 const RESOLVED_DEFAULT_RACE = getLatestCompletedRace(parseInt(RESOLVED_DEFAULT_YEAR));
 

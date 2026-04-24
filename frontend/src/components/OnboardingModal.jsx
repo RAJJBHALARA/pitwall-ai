@@ -40,8 +40,8 @@ function OptionCard({
         padding: 20,
         cursor: 'pointer',
         transition: 'all 0.2s ease',
-        maxHeight: isMobile ? 180 : 'auto',
-        overflow: 'hidden'
+        minHeight: isMobile ? 180 : 200,
+        overflow: 'visible'
       }}
       onMouseEnter={(e) => {
         if (!selected) {
@@ -57,7 +57,7 @@ function OptionCard({
       <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
       <h3 style={{ color: 'white', fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{title}</h3>
       <p style={{ color: '#b0b0b0', fontSize: 13, marginBottom: 10 }}>{subtitle}</p>
-      <p style={{ color: '#8d8d8d', fontSize: 13, lineHeight: 1.5, margin: 0 }}>{description}</p>
+      <p style={{ color: '#8d8d8d', fontSize: 13, lineHeight: 1.5, margin: 0, whiteSpace: 'normal', wordBreak: 'break-word' }}>{description}</p>
     </motion.button>
   );
 }
@@ -65,13 +65,15 @@ function OptionCard({
 export default function OnboardingModal({ onComplete }) {
   const { setMode } = useMode();
   const [selection, setSelection] = useState(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   const handleContinue = () => {
     if (!selection) return;
 
     try {
       localStorage.setItem('onboarding_done', 'true');
-      localStorage.setItem('pitwall_mode', selection);
+      localStorage.setItem('boxbox_mode', selection);
+      localStorage.removeItem('pitwall_mode');
     } catch {}
 
     setMode(selection);
@@ -182,7 +184,7 @@ export default function OnboardingModal({ onComplete }) {
           How familiar are you with Formula 1?
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 20 }}>
           <OptionCard
             mode="beginner"
             icon="👋"

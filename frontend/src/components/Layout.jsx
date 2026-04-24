@@ -25,6 +25,7 @@ export default function Layout() {
       if (e.ctrlKey && e.shiftKey && e.key === 'T') {
         e.preventDefault();
         localStorage.removeItem('tutorial_seen');
+        localStorage.removeItem('boxbox_tutorial_seen');
         localStorage.removeItem('pitwall_tutorial_seen');
         localStorage.removeItem('onboarding_done');
         window.location.reload();
