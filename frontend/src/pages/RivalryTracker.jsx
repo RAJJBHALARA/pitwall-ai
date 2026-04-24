@@ -7,6 +7,7 @@ import PageTransition from '../components/PageTransition';
 import { getRivalryStats, getDrivers } from '../services/api';
 import { getFlagUrl } from '../utils/flagHelper';
 import DriverImage from '../components/DriverImage';
+import AILoadingBlock from '../components/AILoadingBlock';
 import { useMode } from '../context/ModeContext';
 import { getDefaultYear } from '../utils/currentRace';
 
@@ -403,11 +404,13 @@ export default function RivalryTracker() {
             AI Analysis
           </h3>
           {loading ? (
-            <div className="space-y-2 animate-pulse">
-              <div className="h-4 w-full bg-white/5 rounded" />
-              <div className="h-4 w-3/4 bg-white/5 rounded" />
-              <div className="h-4 w-1/2 bg-white/5 rounded" />
-            </div>
+            <AILoadingBlock
+              compact
+              eyebrow="AI rivalry"
+              message="Comparing qualifying pace, race results, and points momentum."
+              detail="This card will update as soon as the matchup summary is ready."
+              lines={3}
+            />
           ) : aiText && !isCorrupted(aiText) ? (
             <p className="text-[#e5e2e1] text-lg leading-relaxed relative z-10 font-['Inter']">{aiText}</p>
           ) : aiText && isCorrupted(aiText) ? (
@@ -422,7 +425,7 @@ export default function RivalryTracker() {
               className="text-lg leading-relaxed relative z-10 font-['Inter']"
               style={{ color: '#666' }}
             >
-              Loading analysis...
+              AI analysis unavailable for this matchup right now.
             </p>
           )}
         </motion.div>

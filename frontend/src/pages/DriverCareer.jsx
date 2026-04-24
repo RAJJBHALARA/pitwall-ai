@@ -5,6 +5,7 @@ import { fetchCareerStats, fetchCareerComparison } from '../services/api';
 import { CAREER_DRIVERS, getCareerMoment } from '../utils/careerDrivers';
 import { getDriverImage } from '../utils/driverImages';
 import { getTeamColor } from '../utils/teamColors';
+import AILoadingBlock from '../components/AILoadingBlock';
 
 // ── Team color map for historical teams ──
 const TEAM_COLOR_MAP = {
@@ -1318,8 +1319,17 @@ function CompareModal({ currentDriver, currentData, onClose }) {
               fontFamily: 'Space Grotesk', fontSize: 13, color: '#ccc',
               margin: 0, lineHeight: 1.6, fontStyle: 'italic',
             }}>
-              {verdictLoading ? 'Analyzing career trajectories...' : aiVerdict}
+              {verdictLoading ? null : aiVerdict}
             </p>
+            {verdictLoading && (
+              <AILoadingBlock
+                compact
+                eyebrow="AI comparison"
+                message="Comparing peak seasons, totals, and legacy weight."
+                detail="Your verdict will appear here as soon as the model finishes."
+                lines={3}
+              />
+            )}
           </motion.div>
         )}
 

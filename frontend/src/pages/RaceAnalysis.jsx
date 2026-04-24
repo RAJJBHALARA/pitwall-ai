@@ -40,6 +40,7 @@ export default function RaceAnalysis() {
   
   const circuitData = getCircuitInfo(gp);
   const [aiInsight, setAiInsight] = useState(null);
+  const [pitWallLoading, setPitWallLoading] = useState(true);
   const { isBeginnerMode } = useMode();
   const [shareOpen, setShareOpen] = useState(false);
   const isLiveSeason = parseInt(season, 10) >= 2025;
@@ -69,6 +70,7 @@ export default function RaceAnalysis() {
   useEffect(() => {
     let active = true;
     setAiInsight(null);
+    setPitWallLoading(true);
     getPitWallAlert(circuitData.circuitName)
       .then(res => {
         if (!active) return;
@@ -77,6 +79,9 @@ export default function RaceAnalysis() {
       .catch(err => {
         if (!active) return;
         console.error("Failed to load pit wall alert", err);
+      })
+      .finally(() => {
+        if (active) setPitWallLoading(false);
       });
     return () => { active = false; };
   }, [gp]);
@@ -206,7 +211,7 @@ export default function RaceAnalysis() {
           key={gp} // Force remount to trigger animations smoothly on GP change
           transition={{ duration: dur(0.5) }}
         >
-           <CircuitInfo circuit={circuitData} aiInsight={aiInsight} />
+           <CircuitInfo circuit={circuitData} aiInsight={aiInsight} aiLoading={pitWallLoading} />
         </motion.div>
 
         {/* Lap Time Evolution */}

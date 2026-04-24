@@ -3,6 +3,7 @@ import { motion, useInView } from 'framer-motion';
 import { getFlagUrl } from '../utils/flagHelper';
 import { useAnimatedCounter } from '../utils/useAnimatedCounter';
 import { Thermometer, Flame, Droplet, Wind, AlertTriangle } from 'lucide-react';
+import AILoadingBlock from './AILoadingBlock';
 
 const CIRCUIT_COUNTRY = {
   "Albert Park Circuit": "au",
@@ -30,7 +31,7 @@ const CIRCUIT_COUNTRY = {
   "Imola Circuit": "it"
 };
 
-export default function CircuitInfo({ circuit, aiInsight }) {
+export default function CircuitInfo({ circuit, aiInsight, aiLoading = false }) {
   const containerRef = useRef(null);
   const isInView = useInView(containerRef, { once: true, margin: "-100px" });
 
@@ -213,9 +214,19 @@ export default function CircuitInfo({ circuit, aiInsight }) {
             <div className="w-2 h-2 rounded-full bg-[#e10600] animate-pulse"></div>
             <span className="text-[#e10600] font-['Space_Grotesk'] font-bold text-[10px] uppercase tracking-widest">Pit Wall Alert</span>
          </div>
-         <p className="text-white text-base leading-relaxed">
-           {aiInsight || "Analyzing historical telemetry and current session conditions..."}
-         </p>
+         {aiLoading ? (
+           <AILoadingBlock
+             compact
+             eyebrow="AI pit wall"
+             message="Scanning circuit traits, weather, and strategy patterns."
+             detail="Building a quick alert for this track."
+             lines={3}
+           />
+         ) : (
+           <p className="text-white text-base leading-relaxed">
+             {aiInsight || 'Pit wall alert unavailable right now. Try another session in a moment.'}
+           </p>
+         )}
          {/* Subtle background icon for depth */}
          <AlertTriangle className="absolute -bottom-6 -right-6 text-white/[0.02] w-48 h-48 pointer-events-none" />
       </div>

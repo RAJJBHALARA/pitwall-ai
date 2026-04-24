@@ -5,6 +5,7 @@ import { useStaggerChildren } from '../utils/useStaggerChildren';
 import { useTypewriter } from '../utils/useTypewriter';
 import toast from 'react-hot-toast';
 import SkeletonLoader from '../components/SkeletonLoader';
+import AILoadingBlock from '../components/AILoadingBlock';
 import CustomDropdown from '../components/CustomDropdown';
 import PageTransition from '../components/PageTransition';
 import { getFantasyPicks, getAvailableRaces } from '../services/api';
@@ -363,11 +364,13 @@ export default function FantasyPicks() {
               </h2>
 
               {isLoading ? (
-                <div className="space-y-3 animate-pulse">
-                  <div className="h-4 w-full bg-white/5 rounded" />
-                  <div className="h-4 w-3/4 bg-white/5 rounded" />
-                  <div className="h-4 w-1/2 bg-white/5 rounded" />
-                </div>
+                <AILoadingBlock
+                  compact
+                  eyebrow="AI strategist"
+                  message="Reviewing recent form, value, and constructor upside."
+                  detail="The lineup summary will appear here as soon as the model finishes."
+                  lines={3}
+                />
               ) : (
                 <p className="text-[#e5e2e1] leading-relaxed mb-8 min-h-[100px]">
                   {displayedInsight || 'No insights available yet.'}

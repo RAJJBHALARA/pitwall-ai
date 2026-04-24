@@ -5,6 +5,7 @@ import { useAnimatedCounter } from '../utils/useAnimatedCounter';
 import ScrollProgress from '../components/ScrollProgress';
 import PageTransition from '../components/PageTransition';
 import CustomDropdown from '../components/CustomDropdown';
+import AILoadingBlock from '../components/AILoadingBlock';
 import { getAvailableRaces, getDrivers, getTelemetry } from '../services/api';
 import { getCircuitInfo } from '../utils/circuitData';
 import { useMode } from '../context/ModeContext';
@@ -148,26 +149,23 @@ export default function LapExplainer() {
   // Derive circuit info from selected GP for dynamic SVG map
   const circuitInfo = getCircuitInfo(gp);
 
-  const fallbackAnalysis = "Pending telemetry analysis... Please wait while the AI generates insights.";
-
   const isCorruptedText = (text) => {
-    if (!text) return true;
-    if (/(.)\1{2,}/.test(text)) return true;
+    const normalized = String(text || '').trim();
+    if (!normalized || normalized.length < 20) return true;
+    if (!/^[A-Z]/.test(normalized)) return true;
+    if (/(.)\1{3,}/.test(normalized)) return true;
 
-    const doubledAll = (text.match(/([a-z])\1/gi) || []).length;
-    if (doubledAll > 4) return true;
-
-    const weirdLongWords = (text.match(/[A-Za-z']{10,}/g) || []).filter(
-      (w) => /([aeiou])\1|([bcdfghjklmnpqrstvwxyz])\1/i.test(w)
-    );
-
-    return weirdLongWords.length > 0;
+    const doubledConsonants = (normalized.match(/([bcdfghjklmnpqrstvwxyz])\1/gi) || []).length;
+    return doubledConsonants > 4;
   };
 
-  const rawAnalysis = telemetry?.aiAnalysis || fallbackAnalysis;
+  const rawAnalysis = String(telemetry?.aiAnalysis || '').trim();
+  const showAiLoader = loading || (!error && !telemetry);
   const displayedAnalysis = error
     ? "Analysis temporarily unavailable. Please retry this lap in a moment."
-    : isCorruptedText(rawAnalysis)
+    : !rawAnalysis
+      ? "Telemetry summary unavailable for this lap."
+      : isCorruptedText(rawAnalysis)
       ? "AI analysis temporarily unavailable. Retrying with clean telemetry summary."
       : rawAnalysis;
   
@@ -457,9 +455,19 @@ export default function LapExplainer() {
                  <h3 className="text-xs font-bold text-[#e10600] uppercase tracking-[0.2em] mb-4">
                    {isBeginnerMode ? 'What Happened This Lap?' : 'Telemetric Verdict'}
                  </h3>
-                 <p className="text-[#e5e2e1] text-lg leading-relaxed font-['Inter']">
-                   {displayedAnalysis}
-                 </p>
+                 {showAiLoader ? (
+                   <AILoadingBlock
+                     compact
+                     eyebrow="AI telemetry"
+                     message="Reading sector data, speed traces, and lap context."
+                     detail="A clean lap verdict will land here once the analysis finishes."
+                     lines={3}
+                   />
+                 ) : (
+                   <p className="text-[#e5e2e1] text-lg leading-relaxed font-['Inter']">
+                     {displayedAnalysis}
+                   </p>
+                 )}
               </div>
            </motion.div>
 
